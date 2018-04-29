@@ -33,7 +33,16 @@ docker-machine create --driver google \
 docker-host
 ```
 - переключение на работу с созданным докер-хостом выполнено командой `eval $(docker-machine env docker-host)`
-- TODO: повторить эксперименты из демо
+- повторены эксперименты из демо(из лекции) по работе с PID, network и user namespace
+- проведено сравнение вывода комманд
+```
+docker run --rm -ti tehbilly/htop
+```
+и
+```
+docker run --rm --pid host --userns=host -it tehbilly/htop
+```
+  в первом случае выводится информация только о процессах запщуенных в контейнере(по факту - один процесс htop) и с ID процессов в контейнере, во втором случае выводится информация о всех процессах хоста id процессов на хостовой машине
 - для создания образа с аппликацией reddit подготовлены файлы: `Dockerfile`, `mongod.conf`, `db_config`, `start.sh`
 - образ собран на докер-хосте командой `docker build -t reddit:latest .`
 - создан аккаунт на docker-hub
