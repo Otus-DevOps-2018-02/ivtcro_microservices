@@ -1,0 +1,14 @@
+---
+- name: Install docker-py
+  hosts: reddit-hosts
+  become: true
+  gather_facts: False
+
+  tasks:
+    - name: Install python packer manager
+      apt:
+        name: python-pip
+
+    - name: Install docker-py
+      pip:
+        name: docker-py

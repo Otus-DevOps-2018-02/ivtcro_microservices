@@ -1,0 +1,12 @@
+---
+- name: Install app
+  hosts: reddit-hosts
+  become: true
+  tasks:
+
+    - name: application container
+      docker_container:
+        name: otus-reddit
+        image: ivtcrootus/otus-reddit:1.0
+        ports:
+        - "9292:9292"
