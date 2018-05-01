@@ -1,8 +1,10 @@
 ---
 - name: Install docker
-  hosts: reddit-hosts
+  hosts: all
   become: true
   gather_facts: True
+  tags:
+    - docker_install
   tasks:
   - name:    Install prerequisites
     apt:     name={{item}} update_cache=yes

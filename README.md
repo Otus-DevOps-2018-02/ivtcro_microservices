@@ -42,16 +42,27 @@ docker run --rm -ti tehbilly/htop
 ```
 docker run --rm --pid host --userns=host -it tehbilly/htop
 ```
-  в первом случае выводится информация только о процессах запщуенных в контейнере(по факту - один процесс htop) и с ID процессов в контейнере, во втором случае выводится информация о всех процессах хоста id процессов на хостовой машине
+  в первом случае выводится информация только о процессах запщуенных в контейнере(по факту - один процесс htop) и с ID процессов в контейнере, во втором случае выводится информация о всех процессах хоста c id процессов на хостовой машине
 - для создания образа с аппликацией reddit подготовлены файлы: `Dockerfile`, `mongod.conf`, `db_config`, `start.sh`
 - образ собран на докер-хосте командой `docker build -t reddit:latest .`
 - создан аккаунт на docker-hub
-- созданный образ загружен в репозитрий docker-hub:
+- созданный образ приложения загружен в репозитрий docker-hub:
 ```
 docker tag reddit:latest ivtcrootus/otus-reddit:1.0
 docker push ivtcrootus/otus-reddit:1.0
 ```
 
+- создан шаблон terraform для запуска VM с ubuntu, количество VM задается параметром `vm_qty`, шаблон лежит в `docker-monolith/infra/terraform`
+- созданы playbook'и для установки docker и приложения reddit из созданного ранее образа контейнера `ivtcrootus/otus-reddit:1.0` на VM созданные по шаблону terraform'ом - в папке `docker-monolith/infra/ansible/playbooks`
+- создано приавло FW для работы packer:
+```
+gcloud compute firewall-rules create packer-ssh \
+--allow tcp:22 \
+--target-tags=packer \
+--description="Allow ssh connections for packer" \
+--direction=INGRESS
+```
+- создан шаблон packer для создания образа ubuntu с docker - в папке `docker-monolith/infra/packer`
 
 ## Как запустить:
 ### Для проверки запуска приложения на докер-хосте:
@@ -67,10 +78,21 @@ gcloud compute firewall-rules create reddit-app \
 - посмотреть IP адрес докер-хоста выполнив комманду `echo $DOCKER_HOST`
 - открыть в браузере адрес http://IP_адрес_докер_хоста:9292
 
-### Для проверки запуска приложения на докер-хосте:
+### Для проверки запуска приложения на локальной машине:
 - открыть новую консоль или в этой же консоли выполнть комманду `eval "$(docker-machine env -u)"`
 - запустить контейнер командой `docker run --name reddit -d -p 9292:9292 ivtcrootus/otus-reddit:1.0`
 
+### Для проверки работы шаблонов packer, terraform и playbook'ов :
+- сначала в docker-monolith/infra/terraform/state-location, потом в docker-monolith/infra/terraform/ создать файлы `terraform.tfvars` задав значение параметров, и выполнить последовательность комманд:
+```
+terraform init
+terraform apply
+```
+- в папке `docker-monolith/infra/ansible` выполнить команду `ansible-playbook ./playbooks/site.yml`
+- в папке `docker-monolith/infra` выполнить команду `packer build  --var-file=packer/variables.json packer/docker-image.json` создав предварительно файл с значениями переменных `packer/docker-image.json`
 
 ## Как проверить:
 - открыть в браузере адрес http://IP_адрес_докер_хоста:9292 и  http://127.0.0.1:9292 и убедиться что страница приложения открывается
+- выполнить в коммандной строке `gcloud compute instances list` и убедиться, что terraform создал заданное количество VM
+- убедится, что на созданных VM работает приложение открыв в браузере http://IP_адрес_ВМ:9292 (IP адреса взять из вывода `gcloud compute instances list`)
+- убедится что для в списке образов проекта присутсвует образ ubuntu с docker выполнив команду `gcloud compute images list | grep '^NAME\|docker'`

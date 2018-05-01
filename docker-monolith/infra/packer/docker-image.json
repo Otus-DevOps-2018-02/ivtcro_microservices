@@ -1,0 +1,36 @@
+{
+  "variables": {
+    "project_id": null,
+    "source_image_family": null,
+    "machine_type": "g1-small"
+  },
+  "builders": [
+    {
+    "type": "googlecompute",
+    "project_id": "{{user `project_id`}}",
+    "image_name": "ubuntu-docker-base-{{timestamp}}",
+    "image_family": "ubuntu-docker",
+    "source_image_family": "{{user `source_image_family`}}",
+    "zone": "europe-west1-b",
+    "ssh_username": "ivtcro",
+    "machine_type": "{{user `machine_type`}}",
+
+    "disk_size" : "10",
+    "disk_type" : "pd-standard",
+    "image_description" : "Ubuntu with docker",
+    "preemptible": "true",
+    "tags" : ["packer"],
+    "network" : "default"
+
+    }
+  ],
+"provisioners": [
+  {
+      "type": "ansible",
+      "extra_arguments": [
+        "--tags", "  tags:docker_install"
+      ],
+      "playbook_file": "ansible/playbooks/site.yml"
+  }
+  ]
+}

@@ -1,7 +1,10 @@
 ---
 - name: Install app
-  hosts: reddit-hosts
+  hosts: all
   become: true
+  tags:
+    - deploy_app
+
   tasks:
 
     - name: application container
