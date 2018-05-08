@@ -96,3 +96,30 @@ terraform apply
 - выполнить в коммандной строке `gcloud compute instances list` и убедиться, что terraform создал заданное количество VM
 - убедится, что на созданных VM работает приложение открыв в браузере http://IP_адрес_ВМ:9292 (IP адреса взять из вывода `gcloud compute instances list`)
 - убедится что для в списке образов проекта присутсвует образ ubuntu с docker выполнив команду `gcloud compute images list | grep '^NAME\|docker'`
+
+___
+# HOMEWORK №15: Docker ... <a name="homework_15"></a>
+
+установлен hadolint и пакет для интеграции с Atom
+src/post-py/Dockerfile - переменные окружения обявляются в одну строку, ADD заменено на COPY, TODO: установка пакетов python поднята выше, так как основные изменеия будут вприложении, чтобы не пересобирать это слой каждый раз
+
+docker build -t ivtcro/post:1.0 ./post-py
+docker build -t ivtcro/comment:1.0 ./comment
+docker build -t ivtcro/ui:1.0 ./ui
+
+
+
+
+docker network create reddit
+
+docker run -d --network=reddit --network-alias=post_db --network-alias=comment_db mongo:latest
+docker run -d --network=reddit --network-alias=post ivtcro/post:1.0
+docker run -d --network=reddit --network-alias=comment ivtcro/comment:1.0
+docker run -d --network=reddit -p 9292:9292 ivtcro/ui:1.0
+
+Поменяны alias'ы
+
+docker run -d --network=reddit --network-alias=post_db_alias --network-alias=comment_db_alias mongo:latest
+docker run -d --network=reddit --network-alias=post_alias --env POST_DATABASE_HOST=post_db_alias ivtcro/post:1.0 env
+docker run -d --network=reddit --network-alias=comment_alias --env COMMENT_DATABASE_HOST=comment_db_alias ivtcro/comment:1.0
+docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias --env COMMENT_SERVICE_HOST=comment_alias ivtcro/ui:1.0
