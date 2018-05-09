@@ -1,0 +1,4 @@
+{
+	"project_id": "docker-XXX",
+	"source_image_family" : "ubuntu-image"
+}

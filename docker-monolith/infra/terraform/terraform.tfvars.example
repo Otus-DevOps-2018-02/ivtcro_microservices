@@ -1,0 +1,10 @@
+public_key_path = "~/.ssh/appuser.pub"
+private_key_path = "~/.ssh/appuser"
+
+project = "docker-XXX"
+region = "europe-west1"
+zone = "europe-west1-b"
+
+host_image = "ubuntu-1604-lts"
+machine_type = "n1-standard-1"
+vm_qty = "3"

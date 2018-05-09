@@ -1,0 +1,4 @@
+---
+- import_playbook: python.yml
+- import_playbook: docker.yml
+- import_playbook: reddit-app.yml
