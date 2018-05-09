@@ -1,8 +1,39 @@
-FROM ruby:2.2
+FROM alpine:3.7
 
-# hadolint ignore=DL3008
-RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essential \
-&& rm -rf /var/lib/apt/lists/*
+# __start base from from https://github.com/andrius/alpine-ruby/blob/master/Dockerfile + bson bson_ext and unf_ext installation
+
+ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
+
+# hadolint ignore=DL3018,DL3019
+RUN apk update \
+&& apk add ruby \
+           ruby-bigdecimal \
+           ruby-bundler \
+           ruby-io-console \
+           ruby-irb \
+           ca-certificates \
+           libressl \
+&& apk add --virtual build-dependencies \
+           build-base \
+           ruby-dev \
+           libressl-dev \
+\
+&& bundle config build.nokogiri --use-system-libraries \
+&& bundle config git.allow_insecure true \
+&& gem install json --no-rdoc --no-ri \
+&& gem install bson -v '4.2.2' --no-rdoc --no-ri \
+&& gem install bson_ext -v '1.5.1' --no-rdoc --no-ri \
+&& gem install unf_ext -v '0.0.7.4' --no-rdoc --no-ri \
+&& gem install puma -v '3.10.0' --no-rdoc --no-ri \
+\
+&& gem cleanup \
+&& apk del build-dependencies \
+&& rm -rf /usr/lib/ruby/gems/*/cache/* \
+          /var/cache/apk/* \
+          /tmp/* \
+/var/tmp/*
+
+# __end
 
 WORKDIR /app
 

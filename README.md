@@ -1,6 +1,7 @@
 # Содержание
 1. [HOMEWORK №13: Docker installation & basic commands](#homework_13)
 2. [HOMEWORK №14: Docker machine & docker-hub](#homework_14)
+3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15")
 
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
@@ -98,28 +99,120 @@ terraform apply
 - убедится что для в списке образов проекта присутсвует образ ubuntu с docker выполнив команду `gcloud compute images list | grep '^NAME\|docker'`
 
 ___
-# HOMEWORK №15: Docker ... <a name="homework_15"></a>
+# HOMEWORK №15: Dockerfile, image optimisation <a name="homework_15"></a>
 
-установлен hadolint и пакет для интеграции с Atom
-src/post-py/Dockerfile - переменные окружения обявляются в одну строку, ADD заменено на COPY, TODO: установка пакетов python поднята выше, так как основные изменеия будут вприложении, чтобы не пересобирать это слой каждый раз
+Для работы с docker host в коммандной строке выполнена командама `eval "$(docker-machine env -u)"`, все дальнейшие команды `docker ...` выполняются в этом терминале.
 
+## Что сделано:
+ - установлен hadolint и пакет для его интеграции с Atom
+ - https://github.com/express42/reddit/archive/microservices.zip распакован в src/
+ - для трех компонентов приложения(ui, post, comment) скорретирован Dockerfile в соответсвии с best practice и рекоммендациями hadolint
+ - скачана последняя версия образао MongoDB
+ ```
+docker pull mongo:latest
+ ```
+ - собраны image'ы контейнеров:
+```
 docker build -t ivtcro/post:1.0 ./post-py
 docker build -t ivtcro/comment:1.0 ./comment
 docker build -t ivtcro/ui:1.0 ./ui
+```
+ - создана сеть для приложения:
+ ```
+ docker network create reddit
+ ```
 
-
-
-
-docker network create reddit
-
+ - запущены контейнеры:
+ ```
 docker run -d --network=reddit --network-alias=post_db --network-alias=comment_db mongo:latest
 docker run -d --network=reddit --network-alias=post ivtcro/post:1.0
 docker run -d --network=reddit --network-alias=comment ivtcro/comment:1.0
 docker run -d --network=reddit -p 9292:9292 ivtcro/ui:1.0
-
-Поменяны alias'ы
-
+```
+ - изменены значения переменных окружения с сетевыми алиасами в Dockerfile'ах(тут лучше было бы поднять версию image, но этого сделано не было)
+ - запущенные контейнеры удалены командой:
+ ```
+docker kill $(docker ps -q)
+ ```
+ - контейнеры запущены из новых образов:
+ ```
 docker run -d --network=reddit --network-alias=post_db_alias --network-alias=comment_db_alias mongo:latest
 docker run -d --network=reddit --network-alias=post_alias --env POST_DATABASE_HOST=post_db_alias ivtcro/post:1.0 env
 docker run -d --network=reddit --network-alias=comment_alias --env COMMENT_DATABASE_HOST=comment_db_alias ivtcro/comment:1.0
 docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias --env COMMENT_SERVICE_HOST=comment_alias ivtcro/ui:1.0
+```
+ - Размер получившихся образов:
+ ```
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ivtcro/ui           1.0                 43652804e650        19 hours ago        765MB
+ivtcro/comment      1.0                 422c6d89758d        20 hours ago        758MB
+ivtcro/post         1.0                 956a0ea41f42        20 hours ago        102MB
+ ```
+ - Изменен Dockerfile для ui - за базу взят образ Ubuntu 16.04, собрана новая версия образа:
+  ```
+docker build -t ivtcro/ui:2.0 ./ui
+ ```
+ - Размер получившихся образов:
+ ```
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ivtcro/ui           1.0                 d461d78de286        About an hour ago   765MB
+ivtcro/ui           2.0                 cfda161864e7        2 hours ago         394MB
+ivtcro/comment      1.0                 422c6d89758d        21 hours ago        758MB
+ivtcro/post         1.0                 956a0ea41f42        21 hours ago        102MB
+```
+ - Изменен Dockerfile для ui и comment - за базу взят образ Alpine 3.7, собраны новые версии образов:
+```
+docker build -t ivtcro/ui:3.0 ./ui
+docker run -d --network=reddit --network-alias=comment ivtcro/comment:2.0
+```
+ - Размер получившихся образов:
+  ```
+REPOSITORY          TAG                 IMAGE ID            CREATED              SIZE
+ivtcro/comment      2.0                 88cb096f5501        55 seconds ago       54.8MB
+ivtcro/ui           3.0                 9f3c1ccbe2ad        11 minutes ago       58.7MB
+ivtcro/ui           1.0                 d461d78de286        4 hours ago          765MB
+ivtcro/ui           2.0                 cfda161864e7        4 hours ago          394MB
+ivtcro/comment      1.0                 422c6d89758d        23 hours ago         758MB
+ivtcro/post         1.0                 956a0ea41f42        23 hours ago         102MB
+ ```
+ - запущенные контейнеры удалены командой:
+```
+docker kill $(docker ps -q)
+```
+ - контейнеры перезапущены:
+```
+docker run -d --network=reddit --network-alias=post_db_alias --network-alias=comment_db_alias mongo:latest
+docker run -d --network=reddit --network-alias=post_alias --env POST_DATABASE_HOST=post_db_alias ivtcro/post:1.0 env
+docker run -d --network=reddit --network-alias=comment_alias --env COMMENT_DATABASE_HOST=comment_db_alias ivtcro/comment:2.0
+docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias --env COMMENT_SERVICE_HOST=comment_alias ivtcro/ui:3.0
+```
+ - создан volume для MongoDB:
+```
+docker volume create reddit_db
+```
+ - контейнеры перезапущены:
+```
+docker run -d --network=reddit --network-alias=post_db_alias --network-alias=comment_db_alias -v reddit_db:/data/db mongo:latest
+docker run -d --network=reddit --network-alias=post_alias --env POST_DATABASE_HOST=post_db_alias ivtcro/post:1.0 env
+docker run -d --network=reddit --network-alias=comment_alias --env COMMENT_DATABASE_HOST=comment_db_alias ivtcro/comment:2.0
+docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias --env COMMENT_SERVICE_HOST=comment_alias ivtcro/ui:3.0
+```
+
+## Как запустить:
+  - Удалить ранее созданные контейнеры:
+```
+docker kill $(docker ps -q)
+```
+  - Выполнить следующую последовательность комманд:
+```
+docker run -d --network=reddit --network-alias=post_db_alias --network-alias=comment_db_alias -v reddit_db:/data/db mongo:latest
+docker run -d --network=reddit --network-alias=post_alias --env POST_DATABASE_HOST=post_db_alias ivtcro/post:1.0 env
+docker run -d --network=reddit --network-alias=comment_alias --env COMMENT_DATABASE_HOST=comment_db_alias ivtcro/comment:2.0
+docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias --env COMMENT_SERVICE_HOST=comment_alias ivtcro/ui:3.0
+```
+
+## Как проверить:
+ - открыть в браузере http://IP_адрес_докер_хоста:9292
+ - оставить запись и комментарий к контарий к контейнер
+ - пересоздать контейнеры
+ - открыть в браузере http://IP_адрес_докер_хоста:9292 и убедиться, что ранее созданные записи не удалены
