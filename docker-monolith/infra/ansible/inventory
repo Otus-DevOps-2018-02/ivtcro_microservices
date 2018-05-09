@@ -10,7 +10,7 @@ import subprocess
 dyn_inventory = json.loads('{"reddit-hosts": { "children" : [] }, "_meta": {"hostvars": {} }}')
 
 # request names and external IP addresses of the GCP compute instances in JSON format
-json_string=subprocess.Popen('gcloud compute instances list --format="json(name, networkInterfaces[0].accessConfigs[0].natIP)"', shell=True, stdout=subprocess.PIPE).stdout.read()
+json_string=subprocess.Popen('gcloud compute instances list --project=docker-ivtcro --format="json(name, networkInterfaces[0].accessConfigs[0].natIP)"', shell=True, stdout=subprocess.PIPE).stdout.read()
 
 parsed_json = json.loads(json_string)
 
