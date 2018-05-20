@@ -2,7 +2,7 @@
 1. [HOMEWORK №13: Docker installation & basic commands](#homework_13)
 2. [HOMEWORK №14: Docker machine & docker-hub](#homework_14)
 3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15")
-
+4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16")
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -216,3 +216,147 @@ docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias -
  - оставить запись и комментарий к контарий к контейнер
  - пересоздать контейнеры
  - открыть в браузере http://IP_адрес_докер_хоста:9292 и убедиться, что ранее созданные записи не удалены
+
+___
+# HOMEWORK №16: Docker: сети, docker-compose <a name="homework_16"></a>
+
+## Docker networking
+### Что сделано:
+- Создан контейнер с типом сети none:  
+```
+docker run  --network none --rm -d --name net_test joffotron/docker-net-tools -c "sleep 100"
+```
+В это случае есть только loopback интерфейс, контейнер недоступен извне, создается отдельный сетевой namespace для контейнера:
+```
+ivtcrov@docker-host:~$ sudo ip netns
+6e93156a123e
+default
+ivtcrov@docker-host:~$ sudo ip netns exec 6e93156a123e ifconfig
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+```
+- Создан контейнер с типом сети host.
+```
+docker run  --network host --rm -d --name net_test joffotron/docker-net-tools -c "sleep 100"
+```
+В это случае контейнер использует сетевой namespace хоста и для него доступен тот же набор сетевых интерфейсов что и для хоста
+- удалена сесть созданная в рамках предыдущего ДЗ: `docker network rm reddit`
+- Создана новая сеть
+```
+docker network create reddit --driver bridge
+```
+- Запущены контейнеры
+```
+docker run -d --network=reddit mongo:latest
+docker run -d --network=reddit ivtcro/post:1.0  
+docker run -d --network=reddit ivtcro/comment:1.0
+docker run -d --network=reddit -p 9292:9292 ivtcro/ui:1.0
+```
+- при открытии приложения возникает ошибка _"Can't show blog posts, some problems with the post service. Refresh?"_. Решение проблемы - присвоение контейнерам сетевых алиасов. Для этого сначала останоми созданные контейнеры
+```
+docker kill $(docker ps -q)
+```
+и запустим их указав алиасы
+```
+docker run -d --network-alias=post_db --network-alias=comment_db --network=reddit mongo:latest
+docker run -d --name=post --network=reddit ivtcro/post:1.0  
+docker run -d --name=comment --network=reddit ivtcro/comment:1.0
+docker run -d --network=reddit -p 9292:9292 ivtcro/ui:1.0
+```
+- компоненты запущены с интерфейсами в двух сетях таким образом, чтобы компонент ui не имел доступа к mongo. Для этого созданы две сети:
+```
+docker network create back_net --subnet=10.0.2.0/24
+docker network create front_net --subnet=10.0.1.0/24
+```
+удалены ранее созданные контейнеры
+```
+docker kill $(docker ps -q)
+```
+запущены контейнеры с новыми сетями
+```
+docker run -d --network-alias=post_db --network-alias=comment_db --network=back_net mongo:latest
+docker run -d --name=post --network=back_net ivtcro/post:1.0  
+docker run -d --name=comment --network=back_net ivtcro/comment:1.0
+docker run -d --network=front_net -p 9292:9292 ivtcro/ui:1.0
+```
+при старте можно подключить контейнер только к одной сети, для подключения запущенных контейнеров к сетям выполнить комманду:
+```
+docker network connect front_net post
+docker network connect front_net comment
+```
+после чего страница проекта окрывается без ошибок
+
+настройки ipdtables
+```
+ivtcrov@docker-host:~$ sudo docker network ls | grep "NETWORK\|_net"
+NETWORK ID          NAME                DRIVER              SCOPE
+46102dc8e9ba        back_net            bridge              local
+7dfc5f746ef0        front_net           bridge              local
+```
+
+```
+ivtcrov@docker-host:~$ sudo docker network ls | grep "NETWORK\|_net"
+NETWORK ID          NAME                DRIVER              SCOPE
+46102dc8e9ba        back_net            bridge              local
+7dfc5f746ef0        front_net           bridge              local
+```
+
+```
+ivtcrov@docker-host:~$ sudo iptables -nL -t nat
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+DOCKER     all  --  0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+DOCKER     all  --  0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
+MASQUERADE  all  --  10.0.1.0/24          0.0.0.0/0           
+MASQUERADE  all  --  10.0.2.0/24          0.0.0.0/0           
+MASQUERADE  all  --  172.18.0.0/16        0.0.0.0/0           
+MASQUERADE  all  --  172.17.0.0/16        0.0.0.0/0           
+MASQUERADE  tcp  --  10.0.1.2             10.0.1.2             tcp dpt:9292
+Chain DOCKER (2 references)
+target     prot opt source               destination         
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0           
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0           
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0           
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0           
+DNAT       tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:9292 to:10.0.1.2:9292
+```
+```
+ivtcrov@docker-host:~$  ps ax | grep docker-proxy
+10106 ?        Sl     0:00 /usr/bin/docker-proxy -proto tcp -host-ip 0.0.0.0 -host-port 9292 -container-ip 10.0.1.2 -container-port 9292
+11038 pts/0    S+     0:00 grep --color=auto docker-proxy
+```
+### Как запустить:
+### Как проверить:
+
+## Docker compose
+### Что сделано:
+создан файл ./src/docker-compose.yml
+удалены контейнеры
+
+docker kill $(docker ps -q)
+export USERNAME=ivtcro
+
+docker-compose up -d
+
+ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker-compose ps
+    Name                  Command             State           Ports         
+----------------------------------------------------------------------------
+src_comment_1   puma                          Up                            
+src_post_1      python3 post_app.py           Up                            
+src_post_db_1   docker-entrypoint.sh mongod   Up      27017/tcp             
+src_ui_1        puma                          Up      0.0.0.0:9292->9292/tcp
+
+
+### Как запустить:
+### Как проверить:
