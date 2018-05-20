@@ -1,8 +1,8 @@
 # Содержание
 1. [HOMEWORK №13: Docker installation & basic commands](#homework_13)
 2. [HOMEWORK №14: Docker machine & docker-hub](#homework_14)
-3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15")
-4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16")
+3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15)
+4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -342,13 +342,13 @@ ivtcrov@docker-host:~$  ps ax | grep docker-proxy
 ## Docker compose
 ### Что сделано:
 создан файл ./src/docker-compose.yml
-удалены контейнеры
-
+удалены ранее созданные контейнеры
+```
 docker kill $(docker ps -q)
 export USERNAME=ivtcro
-
-docker-compose up -d
-
+```
+запущены контенеры командой `docker-compose up -d`:
+```
 ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker-compose ps
     Name                  Command             State           Ports         
 ----------------------------------------------------------------------------
@@ -356,7 +356,56 @@ src_comment_1   puma                          Up
 src_post_1      python3 post_app.py           Up                            
 src_post_db_1   docker-entrypoint.sh mongod   Up      27017/tcp             
 src_ui_1        puma                          Up      0.0.0.0:9292->9292/tcp
+```
+- в переменные окружения вынесены следующие параметры:
+    1) имя пользователя в docker-hub
+    2) порт публикации сервиса ui
+    3) версии сервисов
+    4) путь для volume контейнера с mongodb
+- созданы файлы .env и .env.example со значениями/примерами значений переменных
+- порт публикации для ui изменен на 9291, добавлено соответсвующе правило в FW, псле чего пересозданы контейнеры:
+```
+docker kill $(docker ps -q)
+docker-compose up -d
+```
+после чего приложение доступно по адресу <docker_host_external_ip>:9291
+- все создаваемые docker-compose сущности имеют одинаковый префикс src. По умолчанию в качестве префикса используется имя рабочей директории. Префикс может быт изменен несколькими способами:
+    1) с помощью опции командной строки: -p <prokect_nmae>
+    2) c помощью переменной окружени COMPOSE_PROJECT_NAME
 
+- создан файл `docker-compose.override.yml`, в котором:
+    1) для руби приложений(для сервисов comment и ui) заменена дефолтная команда запуска контейрена на:
+    ```
+    command: "puma --debug -w 2"
+    ```
+    для запуска в дебаг режиме с двумя воркерами
+    2) чтобы можно было не пересобирать образы контейнеров при изменении кода приложений можно монтировать volume с кодом приложения в контейнер. Для этого папки с исходниками приложения скопированы на docker-host
+    ```
+    docker-machine scp -r ui docker-host:~/app_src/
+    docker-machine scp -r post-py docker-host:~/app_src/
+    docker-machine scp -r comment docker-host:~/app_src/
+    ```
+    после выполненных комманд исходили находятся на docker host по пути `/home/docker-user/app_src`
+    ```
+    docker-user@docker-host:~/app_src$ pwd
+    /home/docker-user/app_src
+    docker-user@docker-host:~/app_src$ ls -la
+    total 20
+    drwxrwxr-x 5 docker-user docker-user 4096 May 20 19:01 .
+    drwxr-xr-x 5 docker-user docker-user 4096 May 20 19:00 ..
+    drwxrwxr-x 2 docker-user docker-user 4096 May 20 19:01 comment
+    drwxrwxr-x 2 docker-user docker-user 4096 May 20 19:01 post-py
+    drwxrwxr-x 3 docker-user docker-user 4096 May 20 19:01 ui
+    ```
+    И создана переменная, задающая путь к исходникам придожения на docker host - `APP_PATH`
+
+- контейнеры перезапущены и проверена доступность и работоспособность приложения
+
+```
+docker kill $(docker ps -q)
+docker-compose up -d
+```
+при выполнении `docker-compose up -d` из файлов `docker-compose.yml` и `docker-compose.override.yml` создается один файл проекта как при запуске команды `docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d`
 
 ### Как запустить:
 ### Как проверить:
