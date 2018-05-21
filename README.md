@@ -213,7 +213,7 @@ docker run -d --network=reddit -p 9292:9292 --env POST_SERVICE_HOST=post_alias -
 
 ## Как проверить:
  - открыть в браузере http://IP_адрес_докер_хоста:9292
- - оставить запись и комментарий к контарий к контейнер
+ - оставить запись и комментарий к записи
  - пересоздать контейнеры
  - открыть в браузере http://IP_адрес_докер_хоста:9292 и убедиться, что ранее созданные записи не удалены
 
@@ -222,14 +222,14 @@ ___
 
 ## Docker networking
 ### Что сделано:
-- Создан контейнер с типом сети none:  
+
+- чтобы network namespace docker'а отображались командой netns выполнена команда `sudo ln -s /var/run/docker/netns /var/run/netns`
+- cоздан контейнер с типом сети none:  
 ```
 docker run  --network none --rm -d --name net_test joffotron/docker-net-tools -c "sleep 100"
 ```
-
-sudo ln -s /var/run/docker/netns /var/run/netns
-
-В это случае есть только loopback интерфейс, контейнер недоступен извне, создается отдельный сетевой namespace для контейнера:
+команда docker `exec -ti net_test ifconfig` показывает, что внутри контейнера доступен только loopback-интерфейс
+также видно, что для контейнера создается отдельный сетевой namespace:
 ```
 ivtcrov@docker-host:~$ sudo ip netns
 6e93156a123e
@@ -243,24 +243,26 @@ lo        Link encap:Local Loopback
           collisions:0 txqueuelen:1000
           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
 ```
-- Создан контейнер с типом сети host.
+- создан контейнер с типом сети host.
 ```
 docker run  --network host --rm -d --name net_test joffotron/docker-net-tools -c "sleep 100"
 ```
-В это случае контейнер использует сетевой namespace хоста и для него доступен тот же набор сетевых интерфейсов что и для хоста
+в это случае контейнер использует сетевой namespace хоста и для него доступен тот же набор сетевых интерфейсов и тот же сетевой стек, что и для хоста.
+поэтому при попытке запустить на одном хосте несоколько контейнеров nginx стартует только один - все они пытаются слушать один и тот же порт.
+
 - удалена сесть созданная в рамках предыдущего ДЗ: `docker network rm reddit`
-- Создана новая сеть
+- создана новая сеть:
 ```
 docker network create reddit --driver bridge
 ```
-- Запущены контейнеры
+- запущены контейнеры с использованием созданной сети:
 ```
 docker run -d --network=reddit mongo:latest
 docker run -d --network=reddit ivtcro/post:1.0  
 docker run -d --network=reddit ivtcro/comment:1.0
 docker run -d --network=reddit -p 9292:9292 ivtcro/ui:1.0
 ```
-- при открытии приложения возникает ошибка _"Can't show blog posts, some problems with the post service. Refresh?"_. Решение проблемы - присвоение контейнерам сетевых алиасов. Для этого сначала останоми созданные контейнеры
+- при открытии приложения возникает ошибка _"Can't show blog posts, some problems with the post service. Refresh?"_. Решение проблемы - присвоение контейнерам сетевых алиасов. Для этого сначала останоми созданные контейнеры:
 ```
 docker kill $(docker ps -q)
 ```
@@ -293,22 +295,22 @@ docker network connect front_net post
 docker network connect front_net comment
 ```
 после чего страница проекта окрывается без ошибок
-
-настройки ipdtables
+- изучены настройки сети - bridge, netfilters (таблица NAT) - для созданной сетевой конфигурации микросервисов
 ```
 ivtcrov@docker-host:~$ sudo docker network ls | grep "NETWORK\|_net"
 NETWORK ID          NAME                DRIVER              SCOPE
 46102dc8e9ba        back_net            bridge              local
 7dfc5f746ef0        front_net           bridge              local
 ```
-
 ```
-ivtcrov@docker-host:~$ sudo docker network ls | grep "NETWORK\|_net"
-NETWORK ID          NAME                DRIVER              SCOPE
-46102dc8e9ba        back_net            bridge              local
-7dfc5f746ef0        front_net           bridge              local
+ivtcrov@docker-host:~$ for bridge in $(sudo docker network ls | grep "_net" | awk -p '{print $1}'); do brctl show br-$bridge; done
+bridge name     bridge id               STP enabled     interfaces
+br-46102dc8e9ba         8000.024203be5392       no              veth229abc0
+                                                        veth42a980f
+                                                        vethbf85212
+bridge name     bridge id               STP enabled     interfaces
+br-7dfc5f746ef0         8000.02423067cee5       no              veth5f374a9
 ```
-
 ```
 ivtcrov@docker-host:~$ sudo iptables -nL -t nat
 Chain PREROUTING (policy ACCEPT)
@@ -339,18 +341,23 @@ ivtcrov@docker-host:~$  ps ax | grep docker-proxy
 10106 ?        Sl     0:00 /usr/bin/docker-proxy -proto tcp -host-ip 0.0.0.0 -host-port 9292 -container-ip 10.0.1.2 -container-port 9292
 11038 pts/0    S+     0:00 grep --color=auto docker-proxy
 ```
+
 ### Как запустить:
+- запустить контейнеры командой `docker run` по одному из вариантов опсанному выше(в зависимости от сетевой конфигурации)
+
 ### Как проверить:
+- открыть в браузере http://IP_адрес_докер_хоста:9292
+- оставить запись и комментарий к записи
 
 ## Docker compose
 ### Что сделано:
-создан файл ./src/docker-compose.yml
-удалены ранее созданные контейнеры
+- создан файл ./src/docker-compose.yml с переченем всех микросервисов
+- удалены ранее созданные контейнеры
 ```
 docker kill $(docker ps -q)
 export USERNAME=ivtcro
 ```
-запущены контенеры командой `docker-compose up -d`:
+- запущены контейнеры командой `docker-compose up -d`:
 ```
 ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker-compose ps
     Name                  Command             State           Ports         
@@ -360,7 +367,7 @@ src_post_1      python3 post_app.py           Up
 src_post_db_1   docker-entrypoint.sh mongod   Up      27017/tcp             
 src_ui_1        puma                          Up      0.0.0.0:9292->9292/tcp
 ```
-- в переменные окружения вынесены следующие параметры:
+- в переменные окружения вынесены следующие параметры для docker-compose:
     1. имя пользователя в docker-hub
     2. порт публикации сервиса ui
     3. версии сервисов
@@ -371,11 +378,10 @@ src_ui_1        puma                          Up      0.0.0.0:9292->9292/tcp
 docker kill $(docker ps -q)
 docker-compose up -d
 ```
-после чего приложение доступно по адресу <docker_host_external_ip>:9291
+провеорил, что приложение доступно по адресу <docker_host_external_ip>:9291
 - все создаваемые docker-compose сущности имеют одинаковый префикс src. По умолчанию в качестве префикса используется имя рабочей директории. Префикс может быт изменен несколькими способами:
-    1. с помощью опции командной строки: -p <prokect_nmae>
+    1. с помощью опции командной строки: -p <project_name>
     2. c помощью переменной окружени COMPOSE_PROJECT_NAME
-
 - создан файл `docker-compose.override.yml`, в котором:
     1. для руби приложений(для сервисов comment и ui) заменена дефолтная команда запуска контейрена на:
     ```
@@ -388,7 +394,7 @@ docker-compose up -d
     docker-machine scp -r post-py docker-host:~/app_src/
     docker-machine scp -r comment docker-host:~/app_src/
     ```
-    после выполненных комманд исходили находятся на docker host по пути `/home/docker-user/app_src`
+    после выполненных комманд исходники находятся на docker host по пути `/home/docker-user/app_src`
     ```
     docker-user@docker-host:~/app_src$ pwd
     /home/docker-user/app_src
@@ -400,8 +406,7 @@ docker-compose up -d
     drwxrwxr-x 2 docker-user docker-user 4096 May 20 19:01 post-py
     drwxrwxr-x 3 docker-user docker-user 4096 May 20 19:01 ui
     ```
-    И создана переменная, задающая путь к исходникам придожения на docker host - `APP_PATH`
-
+    также создана переменная, задающая путь к исходникам придожения на docker host - `APP_PATH`
 - контейнеры перезапущены и проверена доступность и работоспособность приложения
 
 ```
@@ -409,6 +414,17 @@ docker kill $(docker ps -q)
 docker-compose up -d
 ```
 при выполнении `docker-compose up -d` из файлов `docker-compose.yml` и `docker-compose.override.yml` создается один файл проекта как при запуске команды `docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d`
+- на примере сервиса comment провеорил что применились значения из override-файла:
+```
+ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker inspect --format='{{json .Mounts}}' 359
+[{"Type":"bind","Source":"/home/docker-user/app_src/comment","Destination":"/app","Mode":"rw","RW":true,"Propagation":"rprivate"}]
+ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker inspect --format='{{json .Path}}{{json .Args}}' 359
+"puma"["--debug","-w","2"]
+```
 
 ### Как запустить:
+- выполнить комманду `docker-compose up -d`
+
 ### Как проверить:
+- открыть в браузере http://IP_адрес_докер_хоста:${UI_EXPOSED_PORT}, где UI_EXPOSED_PORT - переменная задающая порт приложения
+- оставить запись и комментарий к записи
