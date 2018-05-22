@@ -7,7 +7,6 @@ services:
     networks:
       back_net:
         aliases:
-          - post_db
           - comment_db
   ui:
     build: ./ui
@@ -22,22 +21,14 @@ services:
     image: ${USERNAME}/post:${POST_VERSION}
     networks:
       back_net:
-        aliases:
-          - post
       front_net:
-        aliases:
-          - post
 
   comment:
     build: ./comment
     image: ${USERNAME}/comment:${COMMENT_VERSION}
     networks:
       back_net:
-        aliases:
-          - comment
       front_net:
-        aliases:
-          - comment
 
 volumes:
   post_db:
