@@ -1,0 +1,61 @@
+---
+- name: Create gitlabci host
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    service_account_email:  ansible@docker-ivtcro.iam.gserviceaccount.com
+    credentials_file: ./gce-docker-ivtcro-b6a6d0227375.json
+    project_id: docker-ivtcro
+    zone: europe-west1-b
+
+  tasks:
+
+    - name: Create Firewall for http and https
+      gce_net:
+        service_account_email: "{{ service_account_email }}"
+        credentials_file: "{{ credentials_file }}"
+        project_id: "{{ project_id }}"
+        name: default
+        fwname: "http-server-firewall-rule-allow"
+        allowed: tcp:80;tcp:443
+        state: "present"
+        target_tags:
+           - http-server
+        src_range: ['0.0.0.0/0']
+
+    - name: Launch instances
+      gce:
+        instance_names: gitlabci-host
+        machine_type: n1-standard-1
+        image: ubuntu-1604-xenial
+        service_account_email: "{{ service_account_email }}"
+        credentials_file: "{{ credentials_file }}"
+        project_id: "{{ project_id }}"
+        disk_size: 100
+        zone: "{{ zone }}"
+        tags:
+           - http-server
+           - docker-machine
+      register: gce
+
+    - name: Wait for SSH for instances
+      wait_for:
+        delay: 1
+        host: "{{ item.public_ip }}"
+        port: 22
+        state: started
+        timeout: 30
+      with_items: "{{ gce.instance_data }}"
+
+    - name: Save host data
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: gce_instances_ips
+      with_items: "{{ gce.instance_data }}"
+
+- name: Manage new instances
+  hosts: gce_instances_ips
+  become: yes
+  roles:
+    - geerlingguy.docker
