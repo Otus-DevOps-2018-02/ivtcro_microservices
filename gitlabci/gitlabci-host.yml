@@ -5,7 +5,7 @@
 
   vars:
     service_account_email:  ansible@docker-ivtcro.iam.gserviceaccount.com
-    credentials_file: ./gce-docker-ivtcro-b6a6d0227375.json
+    credentials_file: ./gce-docker-ivtcro-ac15014d0346.json
     project_id: docker-ivtcro
     zone: europe-west1-b
 
@@ -41,21 +41,40 @@
 
     - name: Wait for SSH for instances
       wait_for:
-        delay: 1
-        host: "{{ item.public_ip }}"
+        delay: 10
+        host: "{{ gce.instance_data[0].public_ip }}"
         port: 22
         state: started
-        timeout: 30
-      with_items: "{{ gce.instance_data }}"
+        timeout: 60
 
     - name: Save host data
       add_host:
-        hostname: "{{ item.public_ip }}"
-        groupname: gce_instances_ips
-      with_items: "{{ gce.instance_data }}"
+        hostname: "{{ gce.instance_data[0].public_ip }}"
+        groupname: gce_instance_ip
+        public_ip: "{{ gce.instance_data[0].public_ip }}"
 
-- name: Manage new instances
-  hosts: gce_instances_ips
+
+- name: Installing SW
+  hosts: gce_instance_ip
   become: yes
+
   roles:
-    - geerlingguy.docker
+    - role: geerlingguy.docker
+      docker_install_compose: True
+
+  tasks:
+    - name: create gitlab directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - /srv/gitlab/config
+        - /srv/gitlab/data
+        - /srv/gitlab/logs
+
+    - name: copy docker-compose file
+      template:
+        src: ./docker-compose.yml.j2
+        dest: /srv/gitlab/docker-compose.yml
+        mode: 0644

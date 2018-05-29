@@ -3,6 +3,7 @@
 2. [HOMEWORK №14: Docker machine & docker-hub](#homework_14)
 3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15)
 4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16)
+5. [HOMEWORK №17: GitLabCI ](#homework_17)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -388,7 +389,7 @@ docker-compose up -d
     command: "puma --debug -w 2"
     ```
     для запуска в дебаг режиме с двумя воркерами
-    
+
     - чтобы можно было не пересобирать образы контейнеров при изменении кода приложений можно монтировать volume с кодом приложения в контейнер. Для этого папки с исходниками приложения скопированы на docker-host
     ```
     docker-machine scp -r ui docker-host:~/app_src/
@@ -429,3 +430,12 @@ ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker inspect --forma
 ### Как проверить:
 - открыть в браузере http://IP_адрес_докер_хоста:${UI_EXPOSED_PORT}, где UI_EXPOSED_PORT - переменная задающая порт приложения
 - оставить запись и комментарий к записи
+
+___
+# HOMEWORK №17: GitLabCI <a name="homework_17"></a>
+
+### Что сделано:
+создан сервисный аккаунт
+установлена роль geerlingguy.docker
+созданы playbook'и
+sudo docker-compose up -d
