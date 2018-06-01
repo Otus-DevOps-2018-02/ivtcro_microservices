@@ -3,7 +3,7 @@
 2. [HOMEWORK №14: Docker machine & docker-hub](#homework_14)
 3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15)
 4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16)
-5. [HOMEWORK №17: GitLabCI ](#homework_17)
+5. [HOMEWORK №17: GitLabCI](#homework_17)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -438,4 +438,47 @@ ___
 создан сервисный аккаунт
 установлена роль geerlingguy.docker
 созданы playbook'и
+ansible-playbook gitlabci-host.yml
 sudo docker-compose up -d
+
+
+
+git remote add gitlab http://<your-vm-ip>/homework/example.git
+git remote add gitlab http://35.205.196.147/homework/example.git
+
+git remote set-url gitlab git@35.189.233.239:homework/example.git
+
+как перегенерировать ссылки чтобы был корректный IP?
+доступ для заливки не рутом
+
+git push gitlab gitlab-ci-1
+
+
+
+git add .gitlab-ci.yml
+git commit -m 'add pipeline definition'
+git push gitlab gitlab-ci-1
+
+Запуск runner
+sudo docker run -d --name gitlab-runner --restart always \
+-v /srv/gitlab-runner/config:/etc/gitlab-runner \
+-v /var/run/docker.sock:/var/run/docker.sock \
+gitlab/gitlab-runner:latest
+
+Регистрация runner
+sudo docker exec -it gitlab-runner gitlab-runner register
+my-runner
+теги - linux,xenial,ubuntu,docker
+
+git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
+git add reddit/
+git commit -m "Add reddit app"
+git push gitlab gitlab-ci-1
+
+git commit -m "Add test scenario"
+
+смена IP
+зайти в контейнер sudo docker exec -it a31 /bin/bash
+/etc/gitlab/gitlab.rb
+external_url "http://gitlab.example.com"
+gitlab-ctl reconfigure
