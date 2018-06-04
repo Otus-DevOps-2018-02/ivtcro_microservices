@@ -61,6 +61,7 @@
   roles:
     - role: geerlingguy.docker
       docker_install_compose: True
+    - role: andrewrothstein.docker-machine
 
   tasks:
     - name: create gitlab directories

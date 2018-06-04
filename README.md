@@ -482,3 +482,46 @@ git commit -m "Add test scenario"
 /etc/gitlab/gitlab.rb
 external_url "http://gitlab.example.com"
 gitlab-ctl reconfigure
+
+
+добавил роль для установки docker-machine - роль andrewrothstein.docker-machine
+
+настроил работу с GCE на VM с GitLab
+_____
+для пользователя root
+gcloud init
+gcloud auth application-default login
+
+https://docs.gitlab.com/runner/install/linux-manually.html
+
+
+
+ ivtcro@gitlabci-host:~$ sudo cat /etc/gitlab-runner/config.toml
+ concurrent = 10
+ check_interval = 0
+
+ [[runners]]
+   name = "autoscaling"
+   url = "http://<url>/"
+   token = "0a74bb89b2d8450ac186ee38c237be"
+   executor = "docker+machine"
+   limit = 10
+   [runners.docker]
+     tls_verify = false
+     image = "alpine:latest"
+     privileged = false
+     disable_cache = false
+     volumes = ["/cache"]
+     shm_size = 0
+   [runners.cache]
+   [runners.machine]
+     IdleCount = 0
+     IdleTime = 30
+     MachineDriver = "google"
+     MachineName = "runner-%s"
+     MachineOptions = [
+         "google-project=docker-ivtcro"
+     ]
+     OffPeakTimezone = ""
+     OffPeakIdleCount = 0
+     OffPeakIdleTime = 0
