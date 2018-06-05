@@ -435,67 +435,73 @@ ___
 # HOMEWORK №17: GitLabCI <a name="homework_17"></a>
 
 ### Что сделано:
-создан сервисный аккаунт
-установлена роль geerlingguy.docker
-созданы playbook'и
-ansible-playbook gitlabci-host.yml
-sudo docker-compose up -d
-
-
-
-git remote add gitlab http://<your-vm-ip>/homework/example.git
-git remote add gitlab http://35.205.196.147/homework/example.git
-
-git remote set-url gitlab git@35.189.233.239:homework/example.git
-
-как перегенерировать ссылки чтобы был корректный IP?
-доступ для заливки не рутом
-
-git push gitlab gitlab-ci-1
-
-
-
+ - Создан сервисный аккаунт GCE для ansible
+ - Установлена роль geerlingguy.docker:
+ ```
+ ansible-galaxy install geerlingguy.docker
+ ```
+ - созданы playbook'и для заливки VM и подготовки её к запуску GitLabCI
+ - создан хост для запуска gitlabCI:
+ ```
+ ansible-playbook gitlabci-host.yml
+ ```
+ - подключится к созданному хосту и запуск GitLabCI:
+ ```
+ sudo docker-compose up -d
+ ```
+ - для репозитория установенный удаленный репозиторий
+ ```
+ git remote add gitlab http://<your-vm-ip>/homework/example.git
+ ```
+ - в дальнейшем при смене IP адреса хоста можно обновить его для удаленного репозитория командой:
+```
+git remote set-url gitlab git@<new_ip_address>:homework/example.git
+```
+ - Изменения в репозитоии залиты в удаленный репозиторий GitLabCI
+ ```
+ git push gitlab gitlab-ci-1
+ ```
+ - Создано описание pilpline'а, запушено в репозиторий
+```
 git add .gitlab-ci.yml
 git commit -m 'add pipeline definition'
 git push gitlab gitlab-ci-1
-
-Запуск runner
+```
+ - создан и  зарегистрирован docker runner
+```
 sudo docker run -d --name gitlab-runner --restart always \
 -v /srv/gitlab-runner/config:/etc/gitlab-runner \
 -v /var/run/docker.sock:/var/run/docker.sock \
 gitlab/gitlab-runner:latest
-
-Регистрация runner
+```
+```
 sudo docker exec -it gitlab-runner gitlab-runner register
 my-runner
 теги - linux,xenial,ubuntu,docker
-
+```
+ - в репозиторий добавлено приложение reddit и добавлен файл с тестом `simpletest.rb`:
+```
 git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
 git add reddit/
 git commit -m "Add reddit app"
 git push gitlab gitlab-ci-1
-
-git commit -m "Add test scenario"
-
-смена IP
-зайти в контейнер sudo docker exec -it a31 /bin/bash
-/etc/gitlab/gitlab.rb
-external_url "http://gitlab.example.com"
-gitlab-ctl reconfigure
+```
+ - при смене IP адреса хоста с GitLabCI нужно  выполнить следующую последовательность действий:
+1) зайти в контейнер `sudo docker exec -it a31 /bin/bash`
+2) Отредактировать файл `/etc/gitlab/gitlab.rb`, `указать параметр external_url "http://<new_ip_address>"`
+3) выполнить команду `gitlab-ctl reconfigure`
 
 
-добавил роль для установки docker-machine - роль andrewrothstein.docker-machine
-
-настроил работу с GCE на VM с GitLab
-_____
-для пользователя root
+- для автоскейлинга runner'ов выполнены следующие действия
+1) в playbook добавлена установки роли andrewrothstein.docker-machine
+2) настроена работа с GCE на VM с GitLab, для пользователя root:
+```
 gcloud init
 gcloud auth application-default login
-
-https://docs.gitlab.com/runner/install/linux-manually.html
-
-
-
+```
+3) Удален docker runner, установлен runner в соответсвии с инструкцией https://docs.gitlab.com/runner/install/linux-manually.html
+4) Скорректирован конфиг gitlab runner:
+```
  ivtcro@gitlabci-host:~$ sudo cat /etc/gitlab-runner/config.toml
  concurrent = 10
  check_interval = 0
@@ -525,3 +531,13 @@ https://docs.gitlab.com/runner/install/linux-manually.html
      OffPeakTimezone = ""
      OffPeakIdleCount = 0
      OffPeakIdleTime = 0
+```
+- настроена интеграция с Slack
+
+### Как запустить:
+ - зайти в web-интерфейс GitLabCI и запустить выполнение pipeline
+
+### Как проверить:
+ - проверить, что при работе pipeline не возникло ошибок
+ - для выполнения job'ов создаются VM GCE
+ - в Slack-канал поступают сообщения о коммитах в репозиторий GitLabCI
