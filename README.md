@@ -4,6 +4,7 @@
 3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15)
 4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16)
 5. [HOMEWORK №17: GitLabCI](#homework_17)
+6. [HOMEWORK №18: GitLabCI-2](#homework_18)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -541,3 +542,14 @@ gcloud auth application-default login
  - проверить, что при работе pipeline не возникло ошибок
  - для выполнения job'ов создаются VM GCE
  - в Slack-канал поступают сообщения о коммитах в репозиторий GitLabCI
+
+
+
+ ___
+ # HOMEWORK №18: GitLabCI-2 <a name="homework_18"></a>
+
+
+
+настройки runner'а изменены для запуска в previleged режиме для возможности запуска docker в docker-runner'е для запуска сборки образа
+при попытке переключиться на созданный хост для провижионинга приложения возникала ошибка Error: Unknown shell
+пришлось добавить опцию --shell sh

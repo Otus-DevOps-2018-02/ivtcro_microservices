@@ -10,22 +10,28 @@ stages:
 variables:
   DATABASE_URL: 'mongodb://mongo/user_posts'
 
-before_script:
-  - cd reddit
-  - bundle install
-
 test_unit_job:
   stage: test
   services:
     - mongo:latest
+  before_script:
+    - cd reddit
+    - bundle install
   script:
     - ruby simpletest.rb
     - echo 'Testing 1'
 
 build_job:
   stage: build
-  script:
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
     - echo 'Building'
+  script:
+    - docker build -t ivtcrootus/$CI_COMMIT_REF_NAME ./docker-monolith
+    - docker login --username ivtcrootus --password $DOCKER_HUB_PWD
+    - docker push ivtcrootus/$CI_COMMIT_REF_NAME
 
 test_integration_job:
   stage: test
@@ -41,12 +47,81 @@ deploy_dev_job:
     url: http://dev.example.com
 
 branch review:
+  image: docker:latest
   stage: review
-  script: echo "Deploy to $CI_ENVIRONMENT_SLUG"
+  when: manual
+  before_script:
+    - echo "Creating VM for dynamic env."
+  script:
+    # Install CA certs, openssl to https downloads, python for gcloud sdk
+    - apk add --update make ca-certificates openssl python curl
+    - update-ca-certificates
+
+    # Download and install Google Cloud SDK
+    - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+    - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
+    - PATH="google-cloud-sdk/bin:${PATH}"
+    - gcloud --quiet components update
+    - gcloud components install beta
+
+    # Configure service account for docker-machine
+    - echo $GCLOUD_SERVICE_KEY > ${HOME}/gcloud-service-key.json
+    - export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
+
+    # Docker machine installation
+    - base=https://github.com/docker/machine/releases/download/v0.14.0 &&
+      curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine &&
+      install /tmp/docker-machine /usr/local/bin/docker-machine
+
+    # Create VM
+    - docker-machine create --driver google
+      --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts
+      --google-machine-type n1-standard-1
+      --google-project $GCP_PROJECT_ID
+      --google-zone $GCP_ZONE reddit-$CI_ENVIRONMENT_SLUG
+
+    # Provision app
+    - eval $(docker-machine env --shell sh reddit-$CI_ENVIRONMENT_SLUG)
+    - docker run -d -p 9292:9292 ivtcrootus/$CI_COMMIT_REF_NAME
+
   environment:
     name: branch/$CI_COMMIT_REF_NAME
     url: http://$CI_ENVIRONMENT_SLUG.example.com
-  only: 
+  only:
+    - branches
+  except:
+    - master
+
+delete branch review:
+  image: docker:latest
+  stage: review
+  when: manual
+  before_script:
+    - echo "Deleting VM"
+  script:
+    # Install CA certs, openssl to https downloads, python for gcloud sdk
+    - apk add --update make ca-certificates openssl python curl
+    - update-ca-certificates
+
+    # Download and install Google Cloud SDK
+    - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+    - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
+    - PATH="google-cloud-sdk/bin:${PATH}"
+    - gcloud --quiet components update
+    - gcloud components install beta
+
+    # Configure service account
+    - echo $GCLOUD_SERVICE_KEY > ${HOME}/gcloud-service-key.json
+    - gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+
+    # Delete VM
+    - gcloud compute instances delete reddit-$CI_ENVIRONMENT_SLUG  --zone=$GCP_ZONE
+
+  environment:
+    name: branch/$CI_COMMIT_REF_NAME
+    url: http://$CI_ENVIRONMENT_SLUG.example.com
+  only:
     - branches
   except:
     - master
