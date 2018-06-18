@@ -3,6 +3,7 @@
 2. [HOMEWORK №14: Docker machine & docker-hub](#homework_14)
 3. [HOMEWORK №15: Dockerfile, image optimisation](#homework_15)
 4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16)
+5. [HOMEWORK №17: GitLabCI](#homework_17)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -388,7 +389,7 @@ docker-compose up -d
     command: "puma --debug -w 2"
     ```
     для запуска в дебаг режиме с двумя воркерами
-    
+
     - чтобы можно было не пересобирать образы контейнеров при изменении кода приложений можно монтировать volume с кодом приложения в контейнер. Для этого папки с исходниками приложения скопированы на docker-host
     ```
     docker-machine scp -r ui docker-host:~/app_src/
@@ -429,3 +430,114 @@ ivtcro@ubuntuHome:~/Otus-DevOps/ivtcro_microservices/src$ docker inspect --forma
 ### Как проверить:
 - открыть в браузере http://IP_адрес_докер_хоста:${UI_EXPOSED_PORT}, где UI_EXPOSED_PORT - переменная задающая порт приложения
 - оставить запись и комментарий к записи
+
+___
+# HOMEWORK №17: GitLabCI <a name="homework_17"></a>
+
+### Что сделано:
+ - Создан сервисный аккаунт GCE для ansible
+ - Установлена роль geerlingguy.docker:
+ ```
+ ansible-galaxy install geerlingguy.docker
+ ```
+ - созданы playbook'и для заливки VM и подготовки её к запуску GitLabCI
+ - создан хост для запуска gitlabCI:
+ ```
+ ansible-playbook gitlabci-host.yml
+ ```
+ - подключится к созданному хосту и запуск GitLabCI:
+ ```
+ sudo docker-compose up -d
+ ```
+ - для репозитория установенный удаленный репозиторий
+ ```
+ git remote add gitlab http://<your-vm-ip>/homework/example.git
+ ```
+ - в дальнейшем при смене IP адреса хоста можно обновить его для удаленного репозитория командой:
+```
+git remote set-url gitlab git@<new_ip_address>:homework/example.git
+```
+ - Изменения в репозитоии залиты в удаленный репозиторий GitLabCI
+ ```
+ git push gitlab gitlab-ci-1
+ ```
+ - Создано описание pilpline'а, запушено в репозиторий
+```
+git add .gitlab-ci.yml
+git commit -m 'add pipeline definition'
+git push gitlab gitlab-ci-1
+```
+ - создан и  зарегистрирован docker runner
+```
+sudo docker run -d --name gitlab-runner --restart always \
+-v /srv/gitlab-runner/config:/etc/gitlab-runner \
+-v /var/run/docker.sock:/var/run/docker.sock \
+gitlab/gitlab-runner:latest
+```
+```
+sudo docker exec -it gitlab-runner gitlab-runner register
+my-runner
+теги - linux,xenial,ubuntu,docker
+```
+ - в репозиторий добавлено приложение reddit и добавлен файл с тестом `simpletest.rb`:
+```
+git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
+git add reddit/
+git commit -m "Add reddit app"
+git push gitlab gitlab-ci-1
+```
+ - при смене IP адреса хоста с GitLabCI нужно  выполнить следующую последовательность действий:
+1) зайти в контейнер `sudo docker exec -it a31 /bin/bash`
+2) Отредактировать файл `/etc/gitlab/gitlab.rb`, `указать параметр external_url "http://<new_ip_address>"`
+3) выполнить команду `gitlab-ctl reconfigure`
+
+
+- для автоскейлинга runner'ов выполнены следующие действия
+1) в playbook добавлена установки роли andrewrothstein.docker-machine
+2) настроена работа с GCE на VM с GitLab, для пользователя root:
+```
+gcloud init
+gcloud auth application-default login
+```
+3) Удален docker runner, установлен runner в соответсвии с инструкцией https://docs.gitlab.com/runner/install/linux-manually.html
+4) Скорректирован конфиг gitlab runner:
+```
+ ivtcro@gitlabci-host:~$ sudo cat /etc/gitlab-runner/config.toml
+ concurrent = 10
+ check_interval = 0
+
+ [[runners]]
+   name = "autoscaling"
+   url = "http://<url>/"
+   token = "0a74bb89b2d8450ac186ee38c237be"
+   executor = "docker+machine"
+   limit = 10
+   [runners.docker]
+     tls_verify = false
+     image = "alpine:latest"
+     privileged = false
+     disable_cache = false
+     volumes = ["/cache"]
+     shm_size = 0
+   [runners.cache]
+   [runners.machine]
+     IdleCount = 0
+     IdleTime = 30
+     MachineDriver = "google"
+     MachineName = "runner-%s"
+     MachineOptions = [
+         "google-project=docker-ivtcro"
+     ]
+     OffPeakTimezone = ""
+     OffPeakIdleCount = 0
+     OffPeakIdleTime = 0
+```
+- настроена интеграция с Slack
+
+### Как запустить:
+ - зайти в web-интерфейс GitLabCI и запустить выполнение pipeline
+
+### Как проверить:
+ - проверить, что при работе pipeline не возникло ошибок
+ - для выполнения job'ов создаются VM GCE
+ - в Slack-канал поступают сообщения о коммитах в репозиторий GitLabCI
