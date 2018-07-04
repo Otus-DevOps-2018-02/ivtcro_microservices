@@ -607,5 +607,41 @@ docker build -t $USER_NAME/prometheus .
 
 проинсталлирован docker-compose
 docker-compose up -d
+предварительно на docker-host были скопированы исходники, так как они используются
 
-вспомнить для чего делался overrire: посмотреть сам файл, потом readme - из-за него не поднимаются контейнеры
+
+prometeus  не мог достучать до компонента comment, а также при попытке оставить комментарий в приложении reddit выскакивала ошибка
+анализ логов компонента comment (вывод команды 'docker logs docker_comment_1') показал что есть ошибки при старте приложения. поиск в slack по ошибке подсказал решение - в образ контейнера была добавлена установка пакета tzdata
+
+по графику метрики ui_health было видно, что пока обозначенная выше проблема не была решения значение этой метрики было равно 0.
+Такую же картину показывал график по метрике ui_health_comment_availability, в то время как метрика ui_health_post_availability всё время была в 1.
+
+Остановлен компонент post
+`docker-compose stop post`
+после этого метрика ui_health_post_availability изменила свое значение в 0.
+
+также посмотрел значение этих метрик в выводе
+http://<reddit_ip>:9292/metrics
+
+после того, как компонент post был запущен значение метрики ui_health_post_availability вернулось в 1.
+
+в файл docker-compose добавлен контейнер node-exporter
+также в конфиг prometheus добавлен job для сбора метрик с node-exporter
+после чего образ контейнера prometheus пересобран
+
+компоненты перестартованы
+docker-compose down
+docker-compose up -d
+
+после рестарта в списке target'ов prometheus появился node-exporter
+
+при создании доп. нагрузки на хост коммандой `yes > /dev/null` видно что выросло значение метрики node_load1
+
+залиты подготовленные образы
+docker login
+
+
+docker push $USER_NAME/ui
+docker push $USER_NAME/comment  
+docker push $USER_NAME/post
+docker push $USER_NAME/prometheus 
