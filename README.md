@@ -644,4 +644,26 @@ docker login
 docker push $USER_NAME/ui
 docker push $USER_NAME/comment  
 docker push $USER_NAME/post
-docker push $USER_NAME/prometheus 
+docker push $USER_NAME/prometheus
+
+https://hub.docker.com/r/ivtcrootus/comment/
+https://hub.docker.com/r/ivtcrootus/ui/
+https://hub.docker.com/r/ivtcrootus/post/
+https://hub.docker.com/r/ivtcrootus/prometheus/
+
+взят последний релиз 0.6.1:
+git clone -b '0.6.1' --single-branch --depth 1 https://github.com/percona/mongodb_exporter.git
+поправлен Dockerfile - изменения
+добавлена
+
+образ изначально указанный в проекте не подошел, так как там не было многих утилит
+попытка использования golang:alpine тоже не увенчалась успехом - сборка проекта вываливалась на тестах
+в итоге остановился только на запуск билда без тестов
+в папке monitosing/mongodb_exporter
+docker build -t $USER_NAME/mongodb_exporter .
+
+mongodb_exporter добавлен в конифигурацию prometheus и docker-compose
+пересобран образ для prometheus
+после чего перезапущены компоненты
+
+провеорил что добавленный таргет активен и метрики с mongodb стали собираться

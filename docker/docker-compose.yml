@@ -45,7 +45,7 @@ services:
     image: prom/node-exporter:v0.15.2
     networks:
       back_net:
-      front_net:    
+      front_net:
     user: root
     volumes:
       - /proc:/host/proc:ro
@@ -55,6 +55,15 @@ services:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+
+  mongodb_exporter:
+    image: ${USER_NAME}/mongodb_exporter:${MONGO_EXPORTER_VERSION}
+    environment:
+      MONGODB_URL: mongodb://post_db:27017
+    networks:
+      back_net:
+      front_net:
+
 
 volumes:
   post_db:
