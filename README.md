@@ -608,6 +608,7 @@ docker build -t $USER_NAME/prometheus .
 проинсталлирован docker-compose
 docker-compose up -d
 предварительно на docker-host были скопированы исходники, так как они используются
+docker build -t $USER_NAME/prometheus .
 
 
 prometeus  не мог достучать до компонента comment, а также при попытке оставить комментарий в приложении reddit выскакивала ошибка
@@ -667,3 +668,13 @@ mongodb_exporter добавлен в конифигурацию prometheus и do
 после чего перезапущены компоненты
 
 провеорил что добавленный таргет активен и метрики с mongodb стали собираться
+
+docker push $USER_NAME/mongodb_exporter
+https://hub.docker.com/r/ivtcrootus/mongodb_exporter/
+
+
+docker-machine scp cloudprober.cfg docker-host:~/cloudprober/cloudprober.cfg
+обновлен файл docker-compose - добавлен cloudprober
+добавлен таргет в конфигурацию prometheus, пересобран образ
+
+подготовлен конфиг с пробниками: для ui используется http для всего остального ping

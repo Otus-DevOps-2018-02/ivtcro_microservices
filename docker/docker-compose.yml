@@ -1,6 +1,6 @@
-version: "2.0"
+version: "3.6"
 services:
-  post_db:
+  mongodb:
     image: mongo:${MONGO_VERSION}
     volumes:
       - post_db:${VOLUME_PATH}
@@ -8,6 +8,7 @@ services:
       back_net:
         aliases:
           - comment_db
+          - post_db
   ui:
     image: ${USERNAME}/ui:${UI_VERSION}
     ports:
@@ -57,9 +58,25 @@ services:
       - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
 
   mongodb_exporter:
-    image: ${USER_NAME}/mongodb_exporter:${MONGO_EXPORTER_VERSION}
+    image: ${USERNAME}/mongodb_exporter:${MONGO_EXPORTER_VERSION}
     environment:
       MONGODB_URL: mongodb://post_db:27017
+    networks:
+      back_net:
+      front_net:
+
+  cloudprober:
+    image: cloudprober/cloudprober:0.9.3
+#    image: splusminusx/cloudprober:latest
+    entrypoint:
+      - /cloudprober
+      - --logtostderr
+      - --config_file
+      - /etc/cloudprober.cfg
+    volumes:
+      - type: bind
+        source: /home/docker-user/cloudprober/cloudprober.cfg
+        target: /etc/cloudprober.cfg
     networks:
       back_net:
       front_net:
