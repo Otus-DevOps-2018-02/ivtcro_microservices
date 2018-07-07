@@ -1,0 +1,4 @@
+delimeter="***********************************"
+ifndef USER_NAME
+	export USER_NAME=ivtcrootus
+endif

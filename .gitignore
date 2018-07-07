@@ -8,3 +8,4 @@ variables.json
 *.env
 gce*.json
 secrets.py
+docker_pwd
