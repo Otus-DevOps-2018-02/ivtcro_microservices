@@ -666,8 +666,8 @@ docker-machine scp cloudprober.cfg docker-host:~/cloudprober/cloudprober.cfg
  - провеорить доступность и работу интерфейса приложения reddit
  - провеорить доступность инфрефейса prometheus и доступность всех таргетов
  - провеорить, что образы созданных контейнеров доступны по ссылкам:
-    https://hub.docker.com/r/ivtcrootus/comment/
-    https://hub.docker.com/r/ivtcrootus/ui/
-    https://hub.docker.com/r/ivtcrootus/post/
-    https://hub.docker.com/r/ivtcrootus/prometheus/
-    https://hub.docker.com/r/ivtcrootus/mongodb_exporter/
+    [Comment](https://hub.docker.com/r/ivtcrootus/comment/)
+    [Ui](https://hub.docker.com/r/ivtcrootus/ui/)
+    [POST](https://hub.docker.com/r/ivtcrootus/post/)
+    [Prometheus](https://hub.docker.com/r/ivtcrootus/prometheus/)
+    [MongoDB_Exporter](https://hub.docker.com/r/ivtcrootus/mongodb_exporter/)
