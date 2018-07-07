@@ -671,3 +671,96 @@ docker-machine scp cloudprober.cfg docker-host:~/cloudprober/cloudprober.cfg
     [POST](https://hub.docker.com/r/ivtcrootus/post/)
     [Prometheus](https://hub.docker.com/r/ivtcrootus/prometheus/)
     [MongoDB_Exporter](https://hub.docker.com/r/ivtcrootus/mongodb_exporter/)
+
+
+
+______
+
+ - Создана VM для выполнения ДЗ:
+```
+export GOOGLE_PROJECT=docker-ivtcro
+
+gcloud compute firewall-rules create prometheus-default --allow tcp:9090
+gcloud compute firewall-rules create puma-default --allow tcp:9292
+gcloud compute firewall-rules create cadvisor-allow --allow tcp:8080
+gcloud compute firewall-rules create grpahana-allow --allow tcp:3000
+gcloud compute firewall-rules create alertmanager-allow --allow tcp:9093
+
+docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
+
+eval $(docker-machine env docker-host)
+docker-machine ssh docker-host "mkdir app_src"
+docker-machine ssh docker-host "mkdir cloudprober"
+docker-machine scp -r src/ui docker-host:~/app_src/
+docker-machine scp -r src/post-py docker-host:~/app_src/
+docker-machine scp -r src/comment docker-host:~/app_src/
+docker-machine scp monitoring/cloudprober/cloudprober.cfg docker-host:~/cloudprober/cloudprober.cfg
+```
+ - в файле `docker-compose.yml` оставлено описание только компонент приложения, а компоненты мониторинга вынесены в файл `docker-compose-monitoring.yml`
+ - в файл `docker-compose-monitoring.yml` добавлен сервис cAdvisor
+ - добавлен job в настройки prometheus для сборки метрик с cAdvisor, после чего пересобран образ promeheus с помощью подготовленного в прошлом дз makefile'а: `make build_prometheus`
+ - запущены сервисы:
+ ```
+docker-compose up -d
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+ - просмотрена информация по системе и контейнерам в web-интерфейсе cAdvisor и метрики по адресу http://<docker-machine-host-ip>:8080/metrics, а также проверено, что метрики доступны в prometheus
+
+Как провеорсить:
+ - По адресу http://<docker-machine-host-ip>:8080 доступен WEB-интферфейс cAdvisor
+ - в файл `docker-compose-monitoring.yml` добавлен сервис grafana, сервис запщуен командой:
+```
+docker-compose -f docker-compose-monitoring.yml up -d grafana
+```
+ - prometheus добавлен как источник данных для grafana
+ - скачан лашбоард для докера и помещен в папку `monitoring/grafana/dashboards` с именем  `DockerMonitoring.json`, и импортирован в grafana;
+ - в конфигурацию prometheus добавлен job для сбора метрик с компонента post, после чего пересобран образ promeheus с помощью подготовленного в прошлом дз makefile'а: `make build_prometheus`, компонент prometheus рестартован:
+```
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+ - добавлен дашборд с графиками по количеству http-запросов, по доле ошибочных ответов по компоненту ui и график для 95-ого процнтиля по времени отклика ui
+ - описание созданного дашборада экспортировано в json формате и сохранено в `monitoring/grafana/dashboards/UI_Service_Monitoring.json`
+ - создан дашбоард с бизнес-метриками с двумя графиками: количество оставленных постов за час, количество оставленных комментариев за час,
+ - описание созданного дашборада экспортировано в json формате и сохранено в `monitoring/grafana/dashboards/Business_Logic_Monitoring.json`
+ - подготовлена конфигурация alertmanager, dockerfile для сборки образа с созданной конфигурацией
+ - доработан makefile для сборки образа alertmanager
+ - образ контейнера alertmanager собран командой `make build_alertmanager`
+ - насторена интеграция alertmanager со Slack
+ - в `docker/docker-compose-monitoring.yml` добавлен сервис alertmanager
+ - создана конфигурация alertmanager'а для генерации алерта в случае недоступности любого из компонентов в течении минуты, добавлена в образ prometheus, информация о правилах алертинга и alertmanager'е добавлена в конфигурацию promeheus, образ пересобран,
+ - рестартованы компоненты мониторинга
+```
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+ - для проверки работы алертинга остановлен один из компонентов:
+ ```
+ docker-compose stop post
+ ```
+ через минуты после остановки в канале #username появился алерт с текстом  __"[FIRING:1] InstanceDown (post:5000 post page)"__, также виден активный алерт в интерфейсе prometheus и в интерфейсе самого alertmanager'а с более подробным описанием __"post:5000 of job post has been down for more than 1 minute"__
+ - после старта компонента post алерт пропал в интерфейсе prometheus, но в Slack нотификации не было
+
+ - в /etc/docker/daemon.json на dcoker-host добавлены настройки для отдачи метрик:
+ ```
+{
+  "metrics-addr" : "0.0.0.0:9323",
+  "experimental" : true
+}
+```
+и рестатован демон docker: `sudo systemctl restart docker`
+ - в настройки prometheus добавлены job для сбора метрик docker, пересобран контейнер prometheus
+ - метрики docker engine'а по сравнению с cAdvisor не дают данных по хостовой системе и самим контейнерам, но есть данные по docker swarm
+ - создан алерт на медленный ответ от UI: если превышен порог на время ответа для 95-ого процентиля
+ - все подготовленные образы контейнеров залиты в docker hub с помощью makefile
+ - настроена нотификация на email; чтобы не хранить пароль от почты в репозитории подставлял корректный в конфиг на работающем контейнере, для этого конфиг был положен в volume
+
+ Как провеорсить:
+ - По адресу http://<docker-machine-host-ip>:8080 доступен WEB-интферфейс cAdvisor
+ - По адресу http://<docker-machine-host-ip>:3000 доступен интерфейс grafana, на установленных дашбордах отображаются данные
+ - Настройки алертинга отображаются в web-интерфейсе prometheus
+ - провеорить наличие образов в docker hub : https://hub.docker.com/r/ivtcrootus
