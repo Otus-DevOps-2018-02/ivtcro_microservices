@@ -6,7 +6,8 @@
 5. [HOMEWORK №17: GitLabCI](#homework_17)
 6. [HOMEWORK №18: GitLabCI-2](#homework_18)
 7. [HOMEWORK №19: Мониторинг Prometheus](#homework_19)
-7. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
+8. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
+9. [HOMEWORK №21: Logging&tracing](#homework_21)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -771,3 +772,38 @@ docker-compose -f docker-compose-monitoring.yml up -d
  - По адресу http://<docker-machine-host-ip>:3000 доступен интерфейс grafana, на установленных дашбордах отображаются данные
  - Настройки алертинга отображаются в web-интерфейсе prometheus
  - провеорить наличие образов в docker hub : https://hub.docker.com/r/ivtcrootus
+
+ __
+# HOMEWORK №21: Logging&tracing <a name="homework_21"></a>
+### Что сделано:
+ - обновлены исходники приложения reddit в репозитории
+ - создана ВМ для работы над ДЗ, исходники залиты на ВМ:
+```
+ export GOOGLE_PROJECT=docker-ivtcro
+
+ docker-machine create --driver google \
+     --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+     --google-machine-type n1-standard-1 \
+     --google-zone europe-west1-b \
+     --google-open-port 5601/tcp \
+     --google-open-port 9292/tcp \
+     --google-open-port 9411/tcp \
+     logging
+
+ eval $(docker-machine env logging)
+ docker-machine ssh logging "mkdir app_src"
+ docker-machine scp -r src/ui logging:~/app_src/
+ docker-machine scp -r src/post-py logging:~/app_src/
+ docker-machine scp -r src/comment logging:~/app_src/
+ ```
+- создан файл `docker-compose-logging.yml` с сервисами системы логирования
+- создан Dockerfile для сборки образа fluentd `logging/fluentd/Dockerfile`
+- создан файл с конфигурацией fleuntd `logging/fluentd/fluent.conf`
+- создана переменная окружения export APP_IMAGE_TAG=logging и обновлены скрипты сборки для использования этой переменной
+- обновлены Dockerfile для компонентов post и ui, собраны образы контенйнеров приложения
+- запущены сервисы приложения `docker-compose up -d`
+
+### Как запустить:
+
+
+### Как проверить:
