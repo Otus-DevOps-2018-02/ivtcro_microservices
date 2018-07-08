@@ -24,7 +24,7 @@ build_post:
 	./docker_build.sh
 	@echo $(delimeter) \"$@\" "END" $(delimeter)
 
-build_monitoring: build_prometheus build_mongo_exporter build_alertmanager
+build_monitoring: build_prometheus build_mongo_exporter build_alertmanager build_grafana
 
 build_prometheus:
 	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
@@ -44,6 +44,12 @@ build_alertmanager:
 	docker build -t $(USER_NAME)/alertmanager .
 	@echo $(delimeter) \"$@\" "END" $(delimeter)
 
+build_grafana:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd monitoring/grafana && \
+	docker build -t $(USER_NAME)/grafana .
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
 push:
 	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
 	@docker login --username $(USER_NAME) --password-stdin < ./docker_pwd
@@ -53,4 +59,5 @@ push:
 	@docker push $(USER_NAME)/prometheus
 	@docker push $(USER_NAME)/mongodb_exporter
 	@docker push $(USER_NAME)/alertmanager
+	@docker push $(USER_NAME)/grafana
 	@echo $(delimeter) \"$@\" "END" $(delimeter)

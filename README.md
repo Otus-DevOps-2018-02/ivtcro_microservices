@@ -6,6 +6,7 @@
 5. [HOMEWORK №17: GitLabCI](#homework_17)
 6. [HOMEWORK №18: GitLabCI-2](#homework_18)
 7. [HOMEWORK №19: Мониторинг Prometheus](#homework_19)
+7. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -547,7 +548,7 @@ gcloud auth application-default login
 
 
  ___
- # HOMEWORK №18: GitLabCI-2 <a name="homework_18"></a>
+# HOMEWORK №18: GitLabCI-2 <a name="homework_18"></a>
 
 ### Что сделано:
  - создан новый проект example2
@@ -672,10 +673,10 @@ docker-machine scp cloudprober.cfg docker-host:~/cloudprober/cloudprober.cfg
     [Prometheus](https://hub.docker.com/r/ivtcrootus/prometheus/)
     [MongoDB_Exporter](https://hub.docker.com/r/ivtcrootus/mongodb_exporter/)
 
+___
+# HOMEWORK №20: Мониторинг Graphana <a name="homework_20"></a>
 
-
-______
-
+### Что сделано:
  - Создана VM для выполнения ДЗ:
 ```
 export GOOGLE_PROJECT=docker-ivtcro
@@ -758,8 +759,14 @@ docker-compose -f docker-compose-monitoring.yml up -d
  - создан алерт на медленный ответ от UI: если превышен порог на время ответа для 95-ого процентиля
  - все подготовленные образы контейнеров залиты в docker hub с помощью makefile
  - настроена нотификация на email; чтобы не хранить пароль от почты в репозитории подставлял корректный в конфиг на работающем контейнере, для этого конфиг был положен в volume
+ - настроен порвижионинг источника данных и дашбордов. судя по выдаваемой ошибке(_Datasource named ${DS_PROM_SERVER} was not found_), при импорте дашбордов не обрабатывается блок \_\_input, поэтому источник prometheus пришлось порписать в самих панелях
+ - добавлен дашборд с метриками по сервису Post: среднее вермя чтения из базы и 99 перцентиль времени чтения из базы, с агрегацией за 1 минуту
 
- Как провеорсить:
+### Как запустить:
+ - создать инфраструктуру GCE как описано выше(VM, правила FW)
+ - запустить приложение reddit и компоненты мониторинга с помощью docker-compose
+
+### Как проверить:
  - По адресу http://<docker-machine-host-ip>:8080 доступен WEB-интферфейс cAdvisor
  - По адресу http://<docker-machine-host-ip>:3000 доступен интерфейс grafana, на установленных дашбордах отображаются данные
  - Настройки алертинга отображаются в web-интерфейсе prometheus
