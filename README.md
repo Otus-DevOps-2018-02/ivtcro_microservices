@@ -796,14 +796,21 @@ docker-compose -f docker-compose-monitoring.yml up -d
  docker-machine scp -r src/post-py logging:~/app_src/
  docker-machine scp -r src/comment logging:~/app_src/
  ```
-- создан файл `docker-compose-logging.yml` с сервисами системы логирования
+- создан файл `docker-compose-logging.yml` с сервисами системы логирования: elasticsearch, fluetnd, kibana
 - создан Dockerfile для сборки образа fluentd `logging/fluentd/Dockerfile`
 - создан файл с конфигурацией fleuntd `logging/fluentd/fluent.conf`
 - создана переменная окружения export APP_IMAGE_TAG=logging и обновлены скрипты сборки для использования этой переменной
-- обновлены Dockerfile для компонентов post и ui, собраны образы контенйнеров приложения
+- обновлены Dockerfile для компонентов post и ui для работы с новыми исходниками приложения, собраны образы контенйнеров приложения
+- для компонентов ui и post настроена отправка логов в fleuntd
+- настроены фильтры fleuntd для парсинга входящих логов, в том числе второй grok фильтр
 - запущены сервисы приложения `docker-compose up -d`
+- в файл `docker-compose-logging.yml` добавлен сервис zipkin
+- Выполнена отладка "слоамнного" приложения: трассировка в zipkin показывает, что при открытии поста большая задержка для спана `db_find_single_post`. Проблема вызвана искуственно добавленной задержкой 3 сек: `time.sleep(3)`
 
 ### Как запустить:
-
+ - созать ВМ как описано выше
+ - создать сервисы приложения и логирования используя docker-compose
 
 ### Как проверить:
+ - открыть страницу сервиса, выполнить несклько действий.
+ - приложение работает, логи компонент ui и post попадают в elasticsearch и отображаются в интеерфейсе kibana, в zipkin видны трассировки запросов
