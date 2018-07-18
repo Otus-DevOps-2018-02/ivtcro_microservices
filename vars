@@ -2,3 +2,6 @@ delimeter="***********************************"
 ifndef USER_NAME
 	export USER_NAME=ivtcrootus
 endif
+ifndef APP_IMAGE_TAG
+	export APP_IMAGE_TAG=latest
+endif
