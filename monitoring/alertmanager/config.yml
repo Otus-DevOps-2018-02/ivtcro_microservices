@@ -1,0 +1,18 @@
+global:
+  slack_api_url: 'https://hooks.slack.com/services/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'
+
+route:
+  receiver: 'slack-email-notifications'
+
+receivers:
+- name: 'slack-email-notifications'
+  slack_configs:
+  - channel: '#victor_vavulin'
+
+  email_configs:
+  - to: "ivtcrov@gmail.com"
+    from:	"ivtcrov@gmail.com"
+    smarthost: "smtp.gmail.com:587"
+    auth_username: "ivtcrov@gmail.com"
+    auth_identity: "ivtcrov@gmail.com"
+    auth_password: "password"
