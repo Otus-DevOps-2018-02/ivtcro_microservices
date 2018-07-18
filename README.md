@@ -817,7 +817,7 @@ ___
  - приложение работает, логи компонент ui и post попадают в elasticsearch и отображаются в интеерфейсе kibana, в zipkin видны трассировки запросов
 
 ___
-# HOMEWORK №22: Kubernetes the hard way <a name="homework_21"></a>
+# HOMEWORK №22: Kubernetes the hard way <a name="homework_22"></a>
 ### Что сделано:
  - выполнены шаги по tutorial https://github.com/kelseyhightower/kubernetes-the-hard-way
  - созданы файлы с Deployment манифестами приложений `post-deployment.yml`, `ui-deployment.yml`, `comment-deployment.yml`, `mongo-deployment.yml`
