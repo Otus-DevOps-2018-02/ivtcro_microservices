@@ -1,0 +1,49 @@
+include vars
+
+default: build push
+
+build: build_reddit build_monitoring
+
+build_reddit: build_comment build_ui build_post
+
+build_comment:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd src/comment && \
+	./docker_build.sh
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
+build_ui:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd src/ui && \
+	./docker_build.sh
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
+build_post:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd src/post-py && \
+	./docker_build.sh
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
+build_monitoring: build_prometheus build_mongo_exporter
+
+build_prometheus:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd monitoring/prometheus && \
+	docker build -t $(USER_NAME)/prometheus .
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
+build_mongo_exporter:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd monitoring/mongodb_exporter && \
+	docker build -t $(USER_NAME)/mongodb_exporter .
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
+push:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter) 
+	@docker login --username $(USER_NAME) --password-stdin < ./docker_pwd
+	@docker push $(USER_NAME)/ui
+	@docker push $(USER_NAME)/comment
+	@docker push $(USER_NAME)/post
+	@docker push $(USER_NAME)/prometheus
+	@docker push $(USER_NAME)/mongodb_exporter
+	@echo $(delimeter) \"$@\" "END" $(delimeter)

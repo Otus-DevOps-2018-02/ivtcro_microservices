@@ -1,4 +1,4 @@
-FROM alpine:3.7
+FROM alpine:3.6
 
 # __start base from from https://github.com/andrius/alpine-ruby/blob/master/Dockerfile + bson_ext and unf_ext installation
 

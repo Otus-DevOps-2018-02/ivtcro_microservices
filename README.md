@@ -5,6 +5,7 @@
 4. [HOMEWORK №16: Docker: сети, docker-compose](#homework_16)
 5. [HOMEWORK №17: GitLabCI](#homework_17)
 6. [HOMEWORK №18: GitLabCI-2](#homework_18)
+7. [HOMEWORK №19: Мониторинг Prometheus](#homework_19)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -576,3 +577,97 @@ gcloud auth application-default login
  - при выполнении pipline не возникает ошибок
  - приложение доступно по адресу `http://<vm_ip>:9292`, при выполнении действий на странице приложения не возникает ошибок
  - при запуске `branch review` и `delete branch review` происходит соответсвнно создание и удаление VM
+
+
+___
+# HOMEWORK №19: Мониторинг Prometheus <a name="homework_19"></a>
+
+### Что сделано:
+
+ - создана VM для работы над проектом, необхоимые правила FW, на VM запущен контейнер с prometheus
+```
+export GOOGLE_PROJECT=docker-ivtcro
+
+gcloud compute firewall-rules create prometheus-default --allow tcp:9090
+gcloud compute firewall-rules create puma-default --allow tcp:9292
+
+docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
+
+eval $(docker-machine env docker-host)
+
+docker run --rm -p 9090:9090 -d --name prometheus prom/prometheus:v2.1.0
+```
+
+ - обновлена дефолтная конфигурация prometheus для мониторинга компонент приложения reddit(`monitoring/prometheus/prometheus.yml`)
+
+ - подготовлен dockerfile(`monitoring/prometheus/dockerfile`) и собран образ контейнера  prometheus с подготовленной конфигурацией.
+```
+export USER_NAME=ivtcrootus
+docker build -t $USER_NAME/prometheus .
+```
+
+ - созданы скрипты для сборки компонент приложения:
+      src/ui      : docker_build.sh
+      src/post-py : docker_build.sh
+      src/comment : docker_build.sh
+   и произведена сборка образов этими скриптами  
+
+ - все компоненты запущены на VM, предварительно на docker-host были скопированы исходники компонент, так как они используются:
+```
+docker-machine scp -r ui docker-host:~/app_src/
+docker-machine scp -r post-py docker-host:~/app_src/
+docker-machine scp -r comment docker-host:~/app_src/
+docker-compose up -d
+```
+ - столкнулся с проблемой, что prometheus  не мог достучаться до компонента comment, а также при попытке оставить комментарий в приложении reddit выскакивала ошибка;  анализ логов компонента comment (вывод комманды `docker logs docker_comment_1`) показал что есть ошибки при старте приложения, поиск в slack по ошибке подсказал решение - в образ контейнера была добавлена установка пакета tzdata; по графику метрики ui_health было видно, что пока обозначенная выше проблема не была решена, значение этой метрики было равно 0. Такую же картину показывал график по метрике ui_health_comment_availability, в то время как метрика ui_health_post_availability всё время была в 1.
+
+ - остановлен компонент post командой  `docker-compose stop post`, после этого метрика ui_health_post_availability изменила свое значение в 0;также посмотрел значение этих метрик в выводе `http://<reddit_ip>:9292/metrics`
+
+ - после того, как компонент post был запущен значение метрики ui_health_post_availability вернулось в 1.
+
+ - в файл docker-compose добавлен контейнер node-exporter; в конфиг prometheus добавлен job для сбора метрик с node-exporter, после чего образ контейнера prometheus пересобран
+
+ - компоненты рестартованы:
+```
+docker-compose down
+docker-compose up -d
+```
+  после рестарта в списке target'ов prometheus появился node-exporter
+
+ - при создании доп. нагрузки на хост коммандой `yes > /dev/null` видно что выросло значение метрики node_load1
+
+ - созданные образы заллиты на dockerhub
+
+ - подготовлена конфигурация mongodb_exporter'а и dockerfile для сборки образа контейнера с этой конфигурацией; образ указанный в dockerfile проекта на github не подошел, так как там много чего не хватало для сбоки exporter'а; попытка использования golang:alpine тоже началась с проблем - сборка проекта вываливалась на тестах; в итоге остановился только на запуске билда без тестов
+
+ - собран образ mongodb_exporter'а, mongodb_exporter добавлен в конифигурацию prometheus и docker-compose, пересобран образ для prometheus, после чего перезапущены все компоненты
+
+ - провеорил что добавленный таргет mongodb_exporter активен и метрики с mongodb стали собираються
+
+ - подготовлена конфигурация cloudprober'а(подготовлен конфиг с пробниками: для ui используется http для всего остального ping) и скопирована на VM:
+```
+docker-machine scp cloudprober.cfg docker-host:~/cloudprober/cloudprober.cfg
+```
+
+ - обновлен файл docker-compose - добавлен cloudprober, добавлен таргет cloudprober в конфигурацию prometheus, пересобран образ prometheus
+
+ - подготовлен Makefile для сборки всех образов docker-контейнеров, использующихся в проекте и для передачи их в docker hub
+
+### Как запустить:
+  - создать VM как указано выше, скопировать на неё исходники приложения и конфигурацию cloudprober
+  - запустить сборку компонент с помощью make: в корне репозитория выполнить команду `make `
+  - запустить все компоненты с помощью docker-compose
+
+### Как проверить:
+ - провеорить доступность и работу интерфейса приложения reddit
+ - провеорить доступность инфрефейса prometheus и доступность всех таргетов
+ - провеорить, что образы созданных контейнеров доступны по ссылкам:
+    [Comment](https://hub.docker.com/r/ivtcrootus/comment/)
+    [Ui](https://hub.docker.com/r/ivtcrootus/ui/)
+    [POST](https://hub.docker.com/r/ivtcrootus/post/)
+    [Prometheus](https://hub.docker.com/r/ivtcrootus/prometheus/)
+    [MongoDB_Exporter](https://hub.docker.com/r/ivtcrootus/mongodb_exporter/)

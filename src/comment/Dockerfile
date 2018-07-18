@@ -1,4 +1,4 @@
-FROM alpine:3.7
+FROM alpine:3.6
 
 # __start base from from https://github.com/andrius/alpine-ruby/blob/master/Dockerfile + bson bson_ext and unf_ext installation
 
@@ -13,6 +13,7 @@ RUN apk update \
            ruby-irb \
            ca-certificates \
            libressl \
+           tzdata \
 && apk add --virtual build-dependencies \
            build-base \
            ruby-dev \
