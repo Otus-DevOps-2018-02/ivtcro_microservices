@@ -8,6 +8,7 @@
 7. [HOMEWORK №19: Мониторинг Prometheus](#homework_19)
 8. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
 9. [HOMEWORK №21: Logging&tracing](#homework_21)
+10. [HOMEWORK №22: Kubernetes the hard way](#homework_22)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -773,7 +774,7 @@ docker-compose -f docker-compose-monitoring.yml up -d
  - Настройки алертинга отображаются в web-интерфейсе prometheus
  - провеорить наличие образов в docker hub : https://hub.docker.com/r/ivtcrootus
 
- __
+___
 # HOMEWORK №21: Logging&tracing <a name="homework_21"></a>
 ### Что сделано:
  - обновлены исходники приложения reddit в репозитории
@@ -814,3 +815,24 @@ docker-compose -f docker-compose-monitoring.yml up -d
 ### Как проверить:
  - открыть страницу сервиса, выполнить несклько действий.
  - приложение работает, логи компонент ui и post попадают в elasticsearch и отображаются в интеерфейсе kibana, в zipkin видны трассировки запросов
+
+___
+# HOMEWORK №22: Kubernetes the hard way <a name="homework_21"></a>
+### Что сделано:
+ - выполнены шаги по tutorial https://github.com/kelseyhightower/kubernetes-the-hard-way
+ - созданы файлы с Deployment манифестами приложений `post-deployment.yml`, `ui-deployment.yml`, `comment-deployment.yml`, `mongo-deployment.yml`
+ - созданы deployment'ы командой `kubectl apply -f <filename>`
+
+### Как запустить:
+ - выполнить шаги из раздела "что сделано"
+
+### Как проверить:
+ - выполнить команду `kubctl get pods`, результат должен список подов для всех созданных deployment'ов:
+ ```
+ NAME                                  READY     STATUS    RESTARTS   AGE
+ busybox-68654f944b-lbt5c              1/1       Running   111        4d
+ comment-deployment-74fd7ff9d4-gx6gv   1/1       Running   0          1m
+ mongo-deployment-778dcd865b-497bm     1/1       Running   0          24s
+ post-deployment-59989c5b5d-n8gj5      1/1       Running   0          21h
+ ui-deployment-b65bb66d6-k54kd         1/1       Running   0          20h
+ ````
