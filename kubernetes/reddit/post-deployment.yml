@@ -20,7 +20,7 @@ spec:
         component: post
     spec:
       containers:
-      - image: ivtcrootus/post
+      - image: ivtcrootus/post:logging
         name: post
         env:
         - name: POST_DATABASE_HOST

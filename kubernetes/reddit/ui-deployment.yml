@@ -20,5 +20,10 @@ spec:
         component: ui
     spec:
       containers:
-      - image: ivtcrootus/ui
+      - image: ivtcrootus/ui:logging
         name: ui
+        env:
+        - name: ENV
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace        

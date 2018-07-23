@@ -20,7 +20,7 @@ spec:
         component: comment
     spec:
       containers:
-      - image: ivtcrootus/comment
+      - image: ivtcrootus/comment:logging
         name: comment
         env:
         - name: COMMENT_DATABASE_HOST
