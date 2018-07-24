@@ -9,6 +9,7 @@
 8. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
 9. [HOMEWORK №21: Logging&tracing](#homework_21)
 10. [HOMEWORK №22: Kubernetes the hard way](#homework_22)
+11. [HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry](#homework_23)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -836,3 +837,37 @@ ___
  post-deployment-59989c5b5d-n8gj5      1/1       Running   0          21h
  ui-deployment-b65bb66d6-k54kd         1/1       Running   0          20h
  ````
+
+___
+# HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry <a name="homework_23"></a>
+### Что сделано:
+ - установлен minikube для Windows
+ - установлена утилита kubectl для windows
+ - создана VM в VirtualBox с кластером kubernetes командой `minikube start`
+ - в папке `./kubernetes/reddit/` созданы следующие файлы:
+      * описание деплойментов компонентов приложения reddit: `ui-deployment.yml`,`comment-deployment.yml`,`post-deployment.yml`,`mongo-deployment.yml`
+      * описание сервисов для взаимодействия компонентов между собой: `comment-mongodb-service.yml`,`post-mongodb-service.yml`,`comment-service.yml`,`mongodb-service.yml`,`post-service.yml`.
+ - запущен kubectl для перенаправления запросов с локалхоста на компонент ui `kubectl port-forward <ui-pod-name> 8080:9292`, проверена рабoта приложения по адресу `http://localhost:8080/`
+ - создано описание сервиса `ui-service.yml` для доступ к странице приложения снаружи кластера(использован сервис с типом NodePort), проверена работа приложения командой  `minikube service ui`(открывает url приложения)
+ - ознакомился с возможностями dashboard(интерфейс открывается командой `minikube service kubernetes-dashboard -n kube-system`)
+ - создан namespace "dev"
+ - в созданном немспейсе запущено приложение reddit(в папке `./kubernetes/reddit/` выполнена команда `kubectl apply -n dev -f`), проверена работа созданного приложения (`minikube service ui -n dev` открывает страницу приложения)
+ - настроена передача в контенейры с компонентом ui перемменной окружения ENV
+
+ - создан кластер kubernetes в GKE
+ - настроен kubctl для работы с кластером в GKE
+ - создан namespace "dev", в созданном немспейсе запущено приложение reddit
+ - настроено правило FW для доступа к приложению reddit в GKE снаружи
+ - проверена работа приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера). скриншот работающего приложения: 
+![reddit in GKE](https://github.com/Otus-DevOps-2018-02/ivtcro_microservices/blob/kubernetes-2/pics/GKE_Screenshot%20from%202018-07-24%2000-52-14.png)
+ - настроена работа dashboard'а для кластера kubernetes в GKE.
+
+### Как запустить:
+ - создать кластер kubernetes (одним из описанных выше способов - minikube или GKE)-
+ - настроить kubectl на работу с созданным кластером
+ - создать namvespace dev(в папке `kubernetes/reddit` выполнить команду `kubectl apply -f dev-namespace.yml`)
+ - задеплоить приложение (в папке `kubernetes/reddit` выполнить команду `kubectl apply -f .`))
+
+### Как проверить:
+ - для приложения запущенного в кластере созданным minikube выполнить комманду `minikube service ui` и проверить работу приложения в открывшеся странице.
+ - для приложения запущенного в кластере GKE провеорить работу приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера)
