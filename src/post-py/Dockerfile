@@ -1,5 +1,7 @@
 FROM python:3.6.0-alpine
 
+RUN apk add --no-cache gcc musl-dev
+
 WORKDIR /app
 
 COPY helpers.py \
