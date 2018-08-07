@@ -10,6 +10,7 @@
 9. [HOMEWORK №21: Logging&tracing](#homework_21)
 10. [HOMEWORK №22: Kubernetes the hard way](#homework_22)
 11. [HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry](#homework_23)
+12. [HOMEWORK №24: GKE: Ingress, Networks Policy ,Storages](#homework_24)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -871,3 +872,33 @@ ___
 ### Как проверить:
  - для приложения запущенного в кластере созданным minikube выполнить комманду `minikube service ui` и проверить работу приложения в открывшеся странице.
  - для приложения запущенного в кластере GKE провеорить работу приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера)
+
+___
+# HOMEWORK №24: GKE: Ingress, Networks Policy, Storages <a name="homework_24"></a>
+### Что сделано:
+ - создан новый сластер kubernetes в GKE как описано в предыдущем ДЗ, kubectl настроен на работу с созданным кластером
+ - чтобы убедится, что `kube-dns` используется _сервисами_ и без него связность между компонентами приложения пропадает были удалены поды `kube-dns` в namvespace'е `kube-system`(чилсло реплик для deployment'ов `kube-dns-autoscaler` и `kube-dns` выставлено в 0) 
+ - после выполненных изменений проверка доступности сервиса `comment` по имени приводит к ошибке резловинга имени: 
+ ```
+  ping: bad address 'comment'
+  command terminated with exit code
+ ```
+  - настройки deployment'а `kube-dns-autoscaler` возвращены в исходное состояние
+  - проверены настройки, которые создает kubenet в GCP для работы Kubernetes(https://console.cloud.google.com/networking/routes/)
+  - Сервис UI настроен на использование L4 балансировщика GCP
+  - созданы правила Ingress, в качестве Ingress-контроленра используется балансировщика GCP(поддерживает функционал балансировки протокола HTTP). Созданные правила можно посмотреть по ссылке https://console.cloud.google.com/net-services/loadbalancing/loadBalancers/list
+  - получен адрес на балансировкщики для выделенный ingress-контродером (командой `kubectl get ingress -n dev`)
+  - провеорил, что приложение reddit доступно по этому адресу
+  - конфигурация сервиса ui изменена - указан тип NodePort, так как необходимости в L4 балансировщике после настройки Ingress нет.
+  - Ingress настроен на терминацию TLS(создан ключ шифрования, обновлен файл конфигурации для ingress, ingress удалени и создан заново) 
+  - после чего провеорил, что приложение доступно по https
+  - создна Network Policy для изоляции `mongo` от всего входящего трафика за исключением трафика от компонентов `post` и `comment`
+  - настроен динамический persistent storage для `mongo`, провеорил что при пресозданни deployment'а `mongo` данные не теряются
+
+### Как запустить:
+ - создать кластер kubernetes в GKE, настроить kubectl на работу с созданным кластером
+ - в папке `kubernetes/reddit` выполнить команду `kubectl apply -f . -n dev`
+
+### Как проверить:
+ - получить адрес на балансировкщике, выделенный ingress-контродером (`kubectl get ingress -n dev`) для приложения
+ - провеорить, что приложение reddit доступно по этому адресу по https
