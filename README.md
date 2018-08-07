@@ -11,6 +11,7 @@
 10. [HOMEWORK №22: Kubernetes the hard way](#homework_22)
 11. [HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry](#homework_23)
 12. [HOMEWORK №24: GKE: Ingress, Networks Policy ,Storages](#homework_24)
+13. [HOMEWORK №25: HOMEWORK №25: CI/CD в Kubernetes](#homework_25)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -902,3 +903,14 @@ ___
 ### Как проверить:
  - получить адрес на балансировкщике, выделенный ingress-контродером (`kubectl get ingress -n dev`) для приложения
  - провеорить, что приложение reddit доступно по этому адресу по https
+
+___
+# HOMEWORK №25: CI/CD в Kubernetes <a name="homework_25"></a>
+### Что сделано:
+ - установлен helm
+ - создан файл с конфигурацией service account'а для tiller - серверной части helm(`tiller.yml`)
+ - 
+
+### Как запустить:
+
+### Как проверить:
