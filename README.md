@@ -860,7 +860,7 @@ ___
  - настроен kubctl для работы с кластером в GKE
  - создан namespace "dev", в созданном немспейсе запущено приложение reddit
  - настроено правило FW для доступа к приложению reddit в GKE снаружи
- - проверена работа приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера). скриншот работающего приложения: 
+ - проверена работа приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера). скриншот работающего приложения:
 ![reddit in GKE](https://github.com/Otus-DevOps-2018-02/ivtcro_microservices/blob/kubernetes-2/pics/GKE_Screenshot%20from%202018-07-24%2000-52-14.png)
  - настроена работа dashboard'а для кластера kubernetes в GKE.
 
@@ -878,8 +878,8 @@ ___
 # HOMEWORK №24: GKE: Ingress, Networks Policy, Storages <a name="homework_24"></a>
 ### Что сделано:
  - создан новый сластер kubernetes в GKE как описано в предыдущем ДЗ, kubectl настроен на работу с созданным кластером
- - чтобы убедится, что `kube-dns` используется _сервисами_ и без него связность между компонентами приложения пропадает были удалены поды `kube-dns` в namvespace'е `kube-system`(чилсло реплик для deployment'ов `kube-dns-autoscaler` и `kube-dns` выставлено в 0) 
- - после выполненных изменений проверка доступности сервиса `comment` по имени приводит к ошибке резловинга имени: 
+ - чтобы убедится, что `kube-dns` используется _сервисами_ и без него связность между компонентами приложения пропадает были удалены поды `kube-dns` в namvespace'е `kube-system`(чилсло реплик для deployment'ов `kube-dns-autoscaler` и `kube-dns` выставлено в 0)
+ - после выполненных изменений проверка доступности сервиса `comment` по имени приводит к ошибке резловинга имени:
  ```
   ping: bad address 'comment'
   command terminated with exit code
@@ -891,7 +891,7 @@ ___
   - получен адрес на балансировкщики для выделенный ingress-контродером (командой `kubectl get ingress -n dev`)
   - провеорил, что приложение reddit доступно по этому адресу
   - конфигурация сервиса ui изменена - указан тип NodePort, так как необходимости в L4 балансировщике после настройки Ingress нет.
-  - Ingress настроен на терминацию TLS(создан ключ шифрования, обновлен файл конфигурации для ingress, ingress удалени и создан заново) 
+  - Ingress настроен на терминацию TLS(создан ключ шифрования, обновлен файл конфигурации для ingress, ingress удалени и создан заново)
   - после чего провеорил, что приложение доступно по https
   - создна Network Policy для изоляции `mongo` от всего входящего трафика за исключением трафика от компонентов `post` и `comment`
   - настроен динамический persistent storage для `mongo`, провеорил что при пресозданни deployment'а `mongo` данные не теряются
@@ -908,7 +908,8 @@ ___
 # HOMEWORK №25: CI/CD в Kubernetes <a name="homework_25"></a>
 ### Что сделано:
  - установлен helm
- - создан файл с конфигурацией service account'а для tiller - серверной части helm(`tiller.yml`)
+ - создан и применен файл с конфигурацией service account'а для tiller - серверной части helm(`tiller.yml`)
+ - установлен tiller сервер - `helm init --service-account tiller`
  - 
 
 ### Как запустить:
