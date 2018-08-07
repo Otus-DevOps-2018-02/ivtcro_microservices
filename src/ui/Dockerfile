@@ -1,8 +1,12 @@
 FROM alpine:3.6
 
-# __start base from from https://github.com/andrius/alpine-ruby/blob/master/Dockerfile + bson_ext and unf_ext installation
-
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
+
+WORKDIR /app
+COPY Gemfile* config.ru helpers.rb middleware.rb ui_app.rb ./
+COPY views/* ./views/
+
+# __start base from from https://github.com/andrius/alpine-ruby/blob/master/Dockerfile + bson_ext and unf_ext installation
 
 # hadolint ignore=DL3018,DL3019
 RUN apk update \
@@ -13,17 +17,16 @@ RUN apk update \
            ruby-irb \
            ca-certificates \
            libressl \
+           ruby-dev \
 && apk add --virtual build-dependencies \
            build-base \
            ruby-dev \
            libressl-dev \
 \
+&& gem install bundler --no-rdoc --no-ri \
+&& bundle install \
 && bundle config build.nokogiri --use-system-libraries \
 && bundle config git.allow_insecure true \
-&& gem install json --no-rdoc --no-ri \
-&& gem install bson_ext -v '1.12.5' --no-rdoc --no-ri \
-&& gem install unf_ext -v '0.0.7.4' --no-rdoc --no-ri \
-&& gem install puma -v '3.10.0' --no-rdoc --no-ri \
 \
 && gem cleanup \
 && apk del build-dependencies \
@@ -33,12 +36,6 @@ RUN apk update \
 /var/tmp/*
 
 # __end
-
-WORKDIR /app
-
-COPY Gemfile* config.ru helpers.rb middleware.rb ui_app.rb ./
-COPY views/* ./views/
-RUN bundle install
 
 ENV POST_SERVICE_HOST=post \
     POST_SERVICE_PORT=5000 \
