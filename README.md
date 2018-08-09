@@ -910,7 +910,16 @@ ___
  - установлен helm
  - создан и применен файл с конфигурацией service account'а для tiller - серверной части helm(`tiller.yml`)
  - установлен tiller сервер - `helm init --service-account tiller`
- - 
+ -
+...
+- добавлены ноды в кластер, чтобы запустить три экземпляра приложения - pod'ы были в статусе pending, причина `kubectl describe pod <pod_id>`:
+
+```
+Events:
+  Type     Reason            Age                From               Message
+  ----     ------            ----               ----               -------
+  Warning  FailedScheduling  2m (x72 over 23m)  default-scheduler  No nodes are available that match all of the predicates: Insufficient cpu (2).
+```
 
 ### Как запустить:
 
