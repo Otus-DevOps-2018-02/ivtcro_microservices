@@ -3,7 +3,7 @@ FROM alpine:3.6
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 WORKDIR /app
-COPY Gemfile* config.ru helpers.rb middleware.rb ui_app.rb ./
+COPY * ./
 COPY views/* ./views/
 
 # __start base from from https://github.com/andrius/alpine-ruby/blob/master/Dockerfile + bson_ext and unf_ext installation

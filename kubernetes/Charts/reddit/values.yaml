@@ -1,13 +1,13 @@
 comment:
   image:
-    repository: ivtcrootus/ui
+    repository: ivtcrootus/comment
     tag: logging
   service:
     externalPort: 9292
 
 post:
   image:
-    repository: ivtcrootus/ui
+    repository: ivtcrootus/post
     tag: logging
   service:
     externalPort: 5000

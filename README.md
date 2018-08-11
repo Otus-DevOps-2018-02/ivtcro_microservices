@@ -921,6 +921,20 @@ Events:
   Warning  FailedScheduling  2m (x72 over 23m)  default-scheduler  No nodes are available that match all of the predicates: Insufficient cpu (2).
 ```
 
+Удалена проверка на версию tiller'а - `tillerVersion: '>=2.5.0'` - с ней почему-то возникала ошибка
+
+```
+$ helm install --debug --name gitlab . -f values.yaml
+[debug] Created tunnel using local port: '32777'
+
+[debug] SERVER: "127.0.0.1:32777"
+
+[debug] Original chart version: ""
+[debug] CHART PATH: /home/ivtcro/OtusDevOps/ivtcro_microservices/kubernetes/Charts/gitlab-omnibus
+
+Error: Chart incompatible with Tiller v2.10.0-rc.2
+```
+
 ### Как запустить:
 
 ### Как проверить:

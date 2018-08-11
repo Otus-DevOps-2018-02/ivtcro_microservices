@@ -11,4 +11,4 @@ secrets.py
 docker_pwd
 *.tgz
 *.lock
-gitlab-omnibus/
+Gitlab_ci/*
