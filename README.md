@@ -944,7 +944,7 @@ Error: Chart incompatible with Tiller v2.10.0-rc.2
  - проверена работоспособность всех окружений.
 
 ### Как запустить:
- - создать класре GKE
+ - создать клестер GKE
  - развернуть приложение reddit выполнив последовательность комманд в папке `kubernetes/Charts/`:
  ```
  helm dep update ./reddit
