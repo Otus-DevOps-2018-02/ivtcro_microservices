@@ -12,6 +12,7 @@
 11. [HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry](#homework_23)
 12. [HOMEWORK №24: GKE: Ingress, Networks Policy ,Storages](#homework_24)
 13. [HOMEWORK №25: CI/CD в Kubernetes](#homework_25)
+14. [HOMEWORK №26: Kubernetes:Monitoring&Logging](#homework_26)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -944,7 +945,7 @@ Error: Chart incompatible with Tiller v2.10.0-rc.2
  - проверена работоспособность всех окружений.
 
 ### Как запустить:
- - создать клестер GKE
+ - создать класре GKE
  - развернуть приложение reddit выполнив последовательность комманд в папке `kubernetes/Charts/`:
  ```
  helm dep update ./reddit
@@ -958,3 +959,80 @@ Error: Chart incompatible with Tiller v2.10.0-rc.2
  - получить адрес на балансировкщике, выделенный ingress-контродером (`kubectl get ingress -n dev`) для приложения созданного helm'ом
  - провеорить, что приложение reddit доступно по этому адресу и в рабочем состоянии
  - убедиться, что при коммите в feature-ветку репозиториев gitlab создает динамическое окружение, а при коммите в master репозитрия reddit-deploy происходит деплой на статичные окружения staging и production, провеорить работоспособность всех окружений.
+
+
+____
+# HOMEWORK №26: Kubernetes:Monitoring&Logging <a name="homework_26"></a>
+### Что сделано:
+ - установлен ingress-контроллер командой `helm install stable/nginx-ingress --name nginx`
+ - с помощью команды `kubectl get svc` получен адрес выданный ngingx
+ - ip адреес nginx добавлен в /etc/hosts/ с именами `reddit reddit-prometheus reddit-grafana reddit-non-prod production reddit-kibana staging prod`
+ - подготовлен chart для установки prometheus - `kubernetes/Charts/prometheus`
+ - установлен prometheus командой: `helm install . -f custom_values.yml --name prom`
+ - включено использование сервиса kube-state-metrics для сбора метрик kubernetes
+ - здесь и дальше после изменений настроек prometheus обновляется релиз prometheus командой `helm upgrade prom . -f custom_values.yml --install`
+ - включено использование сервиса node-exporter для сбора метрик kubernetes
+ - запущены приложения из helm чарта reddit
+```
+helm upgrade reddit-test ./reddit --install
+helm upgrade production --namespace production ./reddit --install
+helm upgrade staging --namespace staging ./reddit --install
+```
+ - созданы джобы reddit-endpoints, reddit-production для сбора метрик с приложения
+ - джоб reddit-endpoints разбит на три - для каждой из компонент приложений  (post-endpoints, comment-endpoints, ui-endpoints)  
+ - установлена Graphana(описание настроек - https://github.com/helm/charts/tree/master/stable/grafana):
+```
+helm upgrade --install grafana stable/grafana \
+--set "service.type=NodePort" \
+--set "ingress.enabled=true" \
+--set "ingress.hosts={reddit-grafana}"
+```
+ - пароль к grafana получен командной `kubectl get secret --namespace default grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo`
+ - создан data source для prometheus
+ - импортирован дашбоард https://grafana.com/dashboards/315
+ - импортированы ранее созданные dashboard'ы для приложения reddit
+ - запросы дашбордов шаблонизированы для возможности просмотреть данные по конкретному namespace(i.e. окружению)
+ - импортрован дашбоард https://grafana.com/dashboards/741
+ - Добавлен label elastichost=true самой мощной ноде в кластере(из bigpool)
+ - создано описание стека EFK(без Kibana) в папке `kubernetes/efk`. стек запущен командой `kubectl apply -f ./efk`
+ - Kibana запщуена командной
+```
+helm upgrade --install kibana stable/kibana \
+--set "ingress.enabled=true" \
+--set "ingress.hosts={reddit-kibana}" \
+--set "env.ELASTICSEARCH_URL=http://elasticsearch-logging:9200" \
+--version 0.1.1
+```
+ - в web-интерфейсе kibana провеорил наличие событий от k8s
+
+### Как запустить:
+- установить ingress-контроллер командой `helm install stable/nginx-ingress --name nginx`
+- с помощью команды `kubectl get svc` получен адрес выданный ngingx
+- ip адреес nginx добавить в /etc/hosts/ с именами `reddit reddit-prometheus reddit-grafana reddit-non-prod production reddit-kibana staging prod`
+ - установить prometheus - в папке kubernetes/Charts/prometheus выполнить команду `helm upgrade prom . -f custom_values.yml --install`
+ - установить приложения из helm чарта reddit
+```
+helm upgrade reddit-test ./reddit --install
+helm upgrade production --namespace production ./reddit --install
+helm upgrade staging --namespace staging ./reddit --install
+```
+ - установить Graphana:
+```
+helm upgrade --install grafana stable/grafana \
+--set "service.type=NodePort" \
+--set "ingress.enabled=true" \
+--set "ingress.hosts={reddit-grafana}"
+```
+ и настройкить как описано в разделе "Что сделано"
+ -  установить стек EFK выполнив в папке `kubernetes/efk` команды
+```
+kubectl apply -f ./efk
+helm upgrade --install kibana stable/kibana \
+--set "ingress.enabled=true" \
+--set "ingress.hosts={reddit-kibana}" \
+--set "env.ELASTICSEARCH_URL=http://elasticsearch-logging:9200" \
+--version 0.1.1
+```
+
+### Как проверить:
+- проверить работу Prometheus, Grafana и ELK открыв адреса http://reddit-prometheus/, http://reddit-kibana/, http://reddit-grafana/
