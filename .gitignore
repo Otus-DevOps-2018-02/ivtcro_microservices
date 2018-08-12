@@ -9,3 +9,6 @@ variables.json
 gce*.json
 secrets.py
 docker_pwd
+*.tgz
+*.lock
+Gitlab_ci/*
