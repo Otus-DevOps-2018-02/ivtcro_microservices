@@ -11,7 +11,7 @@
 10. [HOMEWORK №22: Kubernetes the hard way](#homework_22)
 11. [HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry](#homework_23)
 12. [HOMEWORK №24: GKE: Ingress, Networks Policy ,Storages](#homework_24)
-13. [HOMEWORK №25: HOMEWORK №25: CI/CD в Kubernetes](#homework_25)
+13. [HOMEWORK №25: CI/CD в Kubernetes](#homework_25)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -908,21 +908,25 @@ ___
 # HOMEWORK №25: CI/CD в Kubernetes <a name="homework_25"></a>
 ### Что сделано:
  - установлен helm
- - создан и применен файл с конфигурацией service account'а для tiller - серверной части helm(`tiller.yml`)
+ - создан и применен файл с конфигурацией service account'а для tiller (`tiller.yml`)
  - установлен tiller сервер - `helm init --service-account tiller`
- -
-...
-- добавлены ноды в кластер, чтобы запустить три экземпляра приложения - pod'ы были в статусе pending, причина `kubectl describe pod <pod_id>`:
+ - созданы chart'ы для компонентов ui, post, comment
+ - chart'ы шаблонизированы, чтобы была возможность запускать несколько экземпляров компонент одновременно (использованы вcтроенные и пользовательские переменные, helper-функции)
+ - проверен запуск трех компонентов ui одновременно - сразу не запустились. pod'ы были в статусе pending, причина `kubectl describe pod <pod_id>`:
 
-```
-Events:
-  Type     Reason            Age                From               Message
-  ----     ------            ----               ----               -------
-  Warning  FailedScheduling  2m (x72 over 23m)  default-scheduler  No nodes are available that match all of the predicates: Insufficient cpu (2).
-```
-
-Удалена проверка на версию tiller'а - `tillerVersion: '>=2.5.0'` - с ней почему-то возникала ошибка
-
+ ```
+ Events:
+   Type     Reason            Age                From               Message
+   ----     ------            ----               ----               -------
+   Warning  FailedScheduling  2m (x72 over 23m)  default-scheduler  No nodes are available that match all of the predicates: Insufficient cpu (2).
+ ```
+ - были добавлены ноды в кластер, чтобы запустить три экземпляра
+ - создан chart приложения reddit для запуска всех компонентов вместе, к перечисленным выше компонентам добавлена база mongodb
+ - проверена работоспособность приложения созданного с помощью подготовленного chart'а
+ - добавлена ВМ в кластер GKE с типом n1-standard-2
+ - отключен RBAC
+ - подготовлен chart gitlab'а - в `kubernetes/Charts/gitlab-omnibus`
+ - в нем удалена проверка на версию tiller'а - `tillerVersion: '>=2.5.0'` - с ней почему-то возникала ошибка, хотя исопльзовалась более свежая версия
 ```
 $ helm install --debug --name gitlab . -f values.yaml
 [debug] Created tunnel using local port: '32777'
@@ -934,7 +938,23 @@ $ helm install --debug --name gitlab . -f values.yaml
 
 Error: Chart incompatible with Tiller v2.10.0-rc.2
 ```
+ - установлен gitlab с помощью подготовленного Chart'а, созданны переменные для подключения к docker-hub
+ - созданы проекты для комопнентов приложения ui,post, comment и для самого приложения - reddit-deploy.
+ - пайплан компонентов приложения настроен для создания динамических окружений, а пайплайн самого приложения - для деплоя на статичные окружения staging и production
+ - проверена работоспособность всех окружений.
 
 ### Как запустить:
+ - создать класре GKE
+ - развернуть приложение reddit выполнив последовательность комманд в папке `kubernetes/Charts/`:
+ ```
+ helm dep update ./reddit
+ helm upgrade <release-name> ./reddit
+ ```
+ - установить gitlab командой `helm install --name gitlab . -f values.yaml`
+ - прописать gitlab адрес на ingress-контролере  и прописать его в /etc/hosts
+ - создать в gitlab проекты как описано в инструкции к ДЗ, описание pipeline'ов взять из репозитория
 
 ### Как проверить:
+ - получить адрес на балансировкщике, выделенный ingress-контродером (`kubectl get ingress -n dev`) для приложения созданного helm'ом
+ - провеорить, что приложение reddit доступно по этому адресу и в рабочем состоянии
+ - убедиться, что при коммите в feature-ветку репозиториев gitlab создает динамическое окружение, а при коммите в master репозитрия reddit-deploy происходит деплой на статичные окружения staging и production, провеорить работоспособность всех окружений.
