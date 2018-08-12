@@ -38,7 +38,7 @@ RUN apk update \
 
 WORKDIR /app
 
-COPY Gemfile* config.ru helpers.rb comment_app.rb ./
+COPY * ./
 RUN bundle install
 
 ENV COMMENT_DATABASE_HOST=comment_db \

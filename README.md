@@ -6,7 +6,12 @@
 5. [HOMEWORK №17: GitLabCI](#homework_17)
 6. [HOMEWORK №18: GitLabCI-2](#homework_18)
 7. [HOMEWORK №19: Мониторинг Prometheus](#homework_19)
-7. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
+8. [HOMEWORK №20: Мониторинг Graphana](#homework_20)
+9. [HOMEWORK №21: Logging&tracing](#homework_21)
+10. [HOMEWORK №22: Kubernetes the hard way](#homework_22)
+11. [HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry](#homework_23)
+12. [HOMEWORK №24: GKE: Ingress, Networks Policy ,Storages](#homework_24)
+13. [HOMEWORK №25: CI/CD в Kubernetes](#homework_25)
 ___
 # HOMEWORK №13: Docker installation & basic commands <a name="homework_13"></a>
 
@@ -771,3 +776,185 @@ docker-compose -f docker-compose-monitoring.yml up -d
  - По адресу http://<docker-machine-host-ip>:3000 доступен интерфейс grafana, на установленных дашбордах отображаются данные
  - Настройки алертинга отображаются в web-интерфейсе prometheus
  - провеорить наличие образов в docker hub : https://hub.docker.com/r/ivtcrootus
+
+___
+# HOMEWORK №21: Logging&tracing <a name="homework_21"></a>
+### Что сделано:
+ - обновлены исходники приложения reddit в репозитории
+ - создана ВМ для работы над ДЗ, исходники залиты на ВМ:
+```
+ export GOOGLE_PROJECT=docker-ivtcro
+
+ docker-machine create --driver google \
+     --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+     --google-machine-type n1-standard-1 \
+     --google-zone europe-west1-b \
+     --google-open-port 5601/tcp \
+     --google-open-port 9292/tcp \
+     --google-open-port 9411/tcp \
+     logging
+
+ eval $(docker-machine env logging)
+ docker-machine ssh logging "mkdir app_src"
+ docker-machine scp -r src/ui logging:~/app_src/
+ docker-machine scp -r src/post-py logging:~/app_src/
+ docker-machine scp -r src/comment logging:~/app_src/
+ ```
+- создан файл `docker-compose-logging.yml` с сервисами системы логирования: elasticsearch, fluetnd, kibana
+- создан Dockerfile для сборки образа fluentd `logging/fluentd/Dockerfile`
+- создан файл с конфигурацией fleuntd `logging/fluentd/fluent.conf`
+- создана переменная окружения export APP_IMAGE_TAG=logging и обновлены скрипты сборки для использования этой переменной
+- обновлены Dockerfile для компонентов post и ui для работы с новыми исходниками приложения, собраны образы контенйнеров приложения
+- для компонентов ui и post настроена отправка логов в fleuntd
+- настроены фильтры fleuntd для парсинга входящих логов, в том числе второй grok фильтр
+- запущены сервисы приложения `docker-compose up -d`
+- в файл `docker-compose-logging.yml` добавлен сервис zipkin
+- Выполнена отладка "слоамнного" приложения: трассировка в zipkin показывает, что при открытии поста большая задержка для спана `db_find_single_post`. Проблема вызвана искуственно добавленной задержкой 3 сек: `time.sleep(3)`
+
+### Как запустить:
+ - созать ВМ как описано выше
+ - создать сервисы приложения и логирования используя docker-compose
+
+### Как проверить:
+ - открыть страницу сервиса, выполнить несклько действий.
+ - приложение работает, логи компонент ui и post попадают в elasticsearch и отображаются в интеерфейсе kibana, в zipkin видны трассировки запросов
+
+___
+# HOMEWORK №22: Kubernetes the hard way <a name="homework_22"></a>
+### Что сделано:
+ - выполнены шаги по tutorial https://github.com/kelseyhightower/kubernetes-the-hard-way
+ - созданы файлы с Deployment манифестами приложений `post-deployment.yml`, `ui-deployment.yml`, `comment-deployment.yml`, `mongo-deployment.yml`
+ - созданы deployment'ы командой `kubectl apply -f <filename>`
+
+### Как запустить:
+ - выполнить шаги из раздела "что сделано"
+
+### Как проверить:
+ - выполнить команду `kubctl get pods`, результат должен список подов для всех созданных deployment'ов:
+ ```
+ NAME                                  READY     STATUS    RESTARTS   AGE
+ busybox-68654f944b-lbt5c              1/1       Running   111        4d
+ comment-deployment-74fd7ff9d4-gx6gv   1/1       Running   0          1m
+ mongo-deployment-778dcd865b-497bm     1/1       Running   0          24s
+ post-deployment-59989c5b5d-n8gj5      1/1       Running   0          21h
+ ui-deployment-b65bb66d6-k54kd         1/1       Running   0          20h
+ ````
+
+___
+# HOMEWORK №23: Minikube&GKE cluster deployment. Secutiry <a name="homework_23"></a>
+### Что сделано:
+ - установлен minikube для Windows
+ - установлена утилита kubectl для windows
+ - создана VM в VirtualBox с кластером kubernetes командой `minikube start`
+ - в папке `./kubernetes/reddit/` созданы следующие файлы:
+      * описание деплойментов компонентов приложения reddit: `ui-deployment.yml`,`comment-deployment.yml`,`post-deployment.yml`,`mongo-deployment.yml`
+      * описание сервисов для взаимодействия компонентов между собой: `comment-mongodb-service.yml`,`post-mongodb-service.yml`,`comment-service.yml`,`mongodb-service.yml`,`post-service.yml`.
+ - запущен kubectl для перенаправления запросов с локалхоста на компонент ui `kubectl port-forward <ui-pod-name> 8080:9292`, проверена рабoта приложения по адресу `http://localhost:8080/`
+ - создано описание сервиса `ui-service.yml` для доступ к странице приложения снаружи кластера(использован сервис с типом NodePort), проверена работа приложения командой  `minikube service ui`(открывает url приложения)
+ - ознакомился с возможностями dashboard(интерфейс открывается командой `minikube service kubernetes-dashboard -n kube-system`)
+ - создан namespace "dev"
+ - в созданном немспейсе запущено приложение reddit(в папке `./kubernetes/reddit/` выполнена команда `kubectl apply -n dev -f`), проверена работа созданного приложения (`minikube service ui -n dev` открывает страницу приложения)
+ - настроена передача в контенейры с компонентом ui перемменной окружения ENV
+
+ - создан кластер kubernetes в GKE
+ - настроен kubctl для работы с кластером в GKE
+ - создан namespace "dev", в созданном немспейсе запущено приложение reddit
+ - настроено правило FW для доступа к приложению reddit в GKE снаружи
+ - проверена работа приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера). скриншот работающего приложения:
+![reddit in GKE](https://github.com/Otus-DevOps-2018-02/ivtcro_microservices/blob/kubernetes-2/pics/GKE_Screenshot%20from%202018-07-24%2000-52-14.png)
+ - настроена работа dashboard'а для кластера kubernetes в GKE.
+
+### Как запустить:
+ - создать кластер kubernetes (одним из описанных выше способов - minikube или GKE)-
+ - настроить kubectl на работу с созданным кластером
+ - создать namvespace dev(в папке `kubernetes/reddit` выполнить команду `kubectl apply -f dev-namespace.yml`)
+ - задеплоить приложение (в папке `kubernetes/reddit` выполнить команду `kubectl apply -f .`))
+
+### Как проверить:
+ - для приложения запущенного в кластере созданным minikube выполнить комманду `minikube service ui` и проверить работу приложения в открывшеся странице.
+ - для приложения запущенного в кластере GKE провеорить работу приложения по адресу http://<node-ip>:<NodePort> (порт можно получить командой `kubectl describe service ui -n dev | grep NodePort`, node-ip - адрес любой из нод кластера)
+
+___
+# HOMEWORK №24: GKE: Ingress, Networks Policy, Storages <a name="homework_24"></a>
+### Что сделано:
+ - создан новый сластер kubernetes в GKE как описано в предыдущем ДЗ, kubectl настроен на работу с созданным кластером
+ - чтобы убедится, что `kube-dns` используется _сервисами_ и без него связность между компонентами приложения пропадает были удалены поды `kube-dns` в namvespace'е `kube-system`(чилсло реплик для deployment'ов `kube-dns-autoscaler` и `kube-dns` выставлено в 0)
+ - после выполненных изменений проверка доступности сервиса `comment` по имени приводит к ошибке резловинга имени:
+ ```
+  ping: bad address 'comment'
+  command terminated with exit code
+ ```
+  - настройки deployment'а `kube-dns-autoscaler` возвращены в исходное состояние
+  - проверены настройки, которые создает kubenet в GCP для работы Kubernetes(https://console.cloud.google.com/networking/routes/)
+  - Сервис UI настроен на использование L4 балансировщика GCP
+  - созданы правила Ingress, в качестве Ingress-контроленра используется балансировщика GCP(поддерживает функционал балансировки протокола HTTP). Созданные правила можно посмотреть по ссылке https://console.cloud.google.com/net-services/loadbalancing/loadBalancers/list
+  - получен адрес на балансировкщики для выделенный ingress-контродером (командой `kubectl get ingress -n dev`)
+  - провеорил, что приложение reddit доступно по этому адресу
+  - конфигурация сервиса ui изменена - указан тип NodePort, так как необходимости в L4 балансировщике после настройки Ingress нет.
+  - Ingress настроен на терминацию TLS(создан ключ шифрования, обновлен файл конфигурации для ingress, ingress удалени и создан заново)
+  - после чего провеорил, что приложение доступно по https
+  - создна Network Policy для изоляции `mongo` от всего входящего трафика за исключением трафика от компонентов `post` и `comment`
+  - настроен динамический persistent storage для `mongo`, провеорил что при пресозданни deployment'а `mongo` данные не теряются
+
+### Как запустить:
+ - создать кластер kubernetes в GKE, настроить kubectl на работу с созданным кластером
+ - в папке `kubernetes/reddit` выполнить команду `kubectl apply -f . -n dev`
+
+### Как проверить:
+ - получить адрес на балансировкщике, выделенный ingress-контродером (`kubectl get ingress -n dev`) для приложения
+ - провеорить, что приложение reddit доступно по этому адресу по https
+
+___
+# HOMEWORK №25: CI/CD в Kubernetes <a name="homework_25"></a>
+### Что сделано:
+ - установлен helm
+ - создан и применен файл с конфигурацией service account'а для tiller (`tiller.yml`)
+ - установлен tiller сервер - `helm init --service-account tiller`
+ - созданы chart'ы для компонентов ui, post, comment
+ - chart'ы шаблонизированы, чтобы была возможность запускать несколько экземпляров компонент одновременно (использованы вcтроенные и пользовательские переменные, helper-функции)
+ - проверен запуск трех компонентов ui одновременно - сразу не запустились. pod'ы были в статусе pending, причина `kubectl describe pod <pod_id>`:
+
+ ```
+ Events:
+   Type     Reason            Age                From               Message
+   ----     ------            ----               ----               -------
+   Warning  FailedScheduling  2m (x72 over 23m)  default-scheduler  No nodes are available that match all of the predicates: Insufficient cpu (2).
+ ```
+ - были добавлены ноды в кластер, чтобы запустить три экземпляра
+ - создан chart приложения reddit для запуска всех компонентов вместе, к перечисленным выше компонентам добавлена база mongodb
+ - проверена работоспособность приложения созданного с помощью подготовленного chart'а
+ - добавлена ВМ в кластер GKE с типом n1-standard-2
+ - отключен RBAC
+ - подготовлен chart gitlab'а - в `kubernetes/Charts/gitlab-omnibus`
+ - в нем удалена проверка на версию tiller'а - `tillerVersion: '>=2.5.0'` - с ней почему-то возникала ошибка, хотя исопльзовалась более свежая версия
+```
+$ helm install --debug --name gitlab . -f values.yaml
+[debug] Created tunnel using local port: '32777'
+
+[debug] SERVER: "127.0.0.1:32777"
+
+[debug] Original chart version: ""
+[debug] CHART PATH: /home/ivtcro/OtusDevOps/ivtcro_microservices/kubernetes/Charts/gitlab-omnibus
+
+Error: Chart incompatible with Tiller v2.10.0-rc.2
+```
+ - установлен gitlab с помощью подготовленного Chart'а, созданны переменные для подключения к docker-hub
+ - созданы проекты для комопнентов приложения ui,post, comment и для самого приложения - reddit-deploy.
+ - пайплан компонентов приложения настроен для создания динамических окружений, а пайплайн самого приложения - для деплоя на статичные окружения staging и production
+ - проверена работоспособность всех окружений.
+
+### Как запустить:
+ - создать клестер GKE
+ - развернуть приложение reddit выполнив последовательность комманд в папке `kubernetes/Charts/`:
+ ```
+ helm dep update ./reddit
+ helm upgrade <release-name> ./reddit
+ ```
+ - установить gitlab командой `helm install --name gitlab . -f values.yaml`
+ - прописать gitlab адрес на ingress-контролере  и прописать его в /etc/hosts
+ - создать в gitlab проекты как описано в инструкции к ДЗ, описание pipeline'ов взять из репозитория
+
+### Как проверить:
+ - получить адрес на балансировкщике, выделенный ingress-контродером (`kubectl get ingress -n dev`) для приложения созданного helm'ом
+ - провеорить, что приложение reddit доступно по этому адресу и в рабочем состоянии
+ - убедиться, что при коммите в feature-ветку репозиториев gitlab создает динамическое окружение, а при коммите в master репозитрия reddit-deploy происходит деплой на статичные окружения staging и production, провеорить работоспособность всех окружений.

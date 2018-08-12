@@ -2,7 +2,7 @@ include vars
 
 default: build push
 
-build: build_reddit build_monitoring
+build: build_reddit build_monitoring build_logging
 
 build_reddit: build_comment build_ui build_post
 
@@ -50,12 +50,20 @@ build_grafana:
 	docker build -t $(USER_NAME)/grafana .
 	@echo $(delimeter) \"$@\" "END" $(delimeter)
 
+build_monitoring: build_fluentd
+
+build_fluentd:
+	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
+	@cd logging/fluentd && \
+	docker build -t $(USER_NAME)/fluentd .
+	@echo $(delimeter) \"$@\" "END" $(delimeter)
+
 push:
 	@echo $(delimeter) \"$@\" "target started: " $(delimeter)
 	@docker login --username $(USER_NAME) --password-stdin < ./docker_pwd
-	@docker push $(USER_NAME)/ui
-	@docker push $(USER_NAME)/comment
-	@docker push $(USER_NAME)/post
+	@docker push $(USER_NAME)/ui:$(APP_IMAGE_TAG)
+	@docker push $(USER_NAME)/comment:$(APP_IMAGE_TAG)
+	@docker push $(USER_NAME)/post:$(APP_IMAGE_TAG)
 	@docker push $(USER_NAME)/prometheus
 	@docker push $(USER_NAME)/mongodb_exporter
 	@docker push $(USER_NAME)/alertmanager
